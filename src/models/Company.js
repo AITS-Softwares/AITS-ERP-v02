@@ -99,9 +99,25 @@ subscriptionExpiresAt: { type: Date },
           trim: true,
           match: /^[0-9A-Z]{15}$/,
         },
+        legalName: {
+          type: String,
+          trim: true,
+        },
+        tradeName: {
+          type: String,
+          trim: true,
+        },
         country: {
           type: String,
           required: true,
+        },
+        state: {
+          type: String,
+          trim: true,
+        },
+        stateCode: {
+          type: String,
+          trim: true,
         },
         address: {
           type: String,

@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { 
   FaArrowLeft, FaUser, FaCalendarAlt, FaBoxOpen, 
   FaCalculator, FaPaperclip, FaInfoCircle, FaFilePdf, 
@@ -42,12 +44,71 @@ const SectionHeader = ({ icon: Icon, title, color = "indigo" }) => (
   </div>
 );
 
+const inputClassName =
+  "w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100";
+
+const statusTone = (value = "") => {
+  const status = String(value).toLowerCase();
+  if (status.includes("cancel")) return "bg-rose-50 text-rose-600 border-rose-100";
+  if (status.includes("generate") || status.includes("active") || status.includes("success")) {
+    return "bg-emerald-50 text-emerald-600 border-emerald-100";
+  }
+  return "bg-amber-50 text-amber-600 border-amber-100";
+};
+
+const defaultComplianceForm = {
+  supplyType: "B2B",
+  transactionType: "Regular",
+  placeOfSupply: "",
+  reverseCharge: false,
+  transporterName: "",
+  transporterId: "",
+  transportMode: "Road",
+  transportDistanceKm: "",
+  vehicleNumber: "",
+  vehicleType: "Regular",
+  transportDocumentNumber: "",
+  transportDocumentDate: "",
+};
+
+const dateInputValue = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+};
+
 export default function SalesInvoiceView() {
   const { id } = useParams();
   const router = useRouter();
   const [invoice, setInvoice] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState("");
+  const [cancelReason, setCancelReason] = useState("");
+  const [complianceForm, setComplianceForm] = useState(defaultComplianceForm);
+
+  const syncComplianceForm = (invoiceData) => {
+    const compliance = invoiceData?.compliance || {};
+    setComplianceForm({
+      supplyType: compliance.supplyType || "B2B",
+      transactionType: compliance.transactionType || "Regular",
+      placeOfSupply: compliance.placeOfSupply || "",
+      reverseCharge: Boolean(compliance.reverseCharge),
+      transporterName: compliance.transporterName || "",
+      transporterId: compliance.transporterId || "",
+      transportMode: compliance.transportMode || "Road",
+      transportDistanceKm: compliance.transportDistanceKm || "",
+      vehicleNumber: compliance.vehicleNumber || "",
+      vehicleType: compliance.vehicleType || "Regular",
+      transportDocumentNumber: compliance.transportDocumentNumber || "",
+      transportDocumentDate: dateInputValue(compliance.transportDocumentDate),
+    });
+    setCancelReason(
+      invoiceData?.compliance?.eInvoice?.cancelReason ||
+      invoiceData?.compliance?.eWayBill?.cancelReason ||
+      ""
+    );
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -62,6 +123,7 @@ export default function SalesInvoiceView() {
 
         if (res.data.success) {
           setInvoice(res.data.data);
+          syncComplianceForm(res.data.data);
           setError(null);
         } else {
           setError(res.data.error || "Invoice not found.");
@@ -75,6 +137,45 @@ export default function SalesInvoiceView() {
 
     fetchInvoice();
   }, [id]);
+
+  const handleComplianceInputChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setComplianceForm((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
+  };
+
+  const runComplianceAction = async (docType, action) => {
+    try {
+      setActionLoading(`${docType}:${action}`);
+      const token = localStorage.getItem("token");
+      const res = await axios.post(
+        `/api/integrations/erpnext/compliance/${docType}/${action}`,
+        {
+          invoiceId: id,
+          cancelReason,
+          compliance: complianceForm,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.data?.success) {
+        setInvoice(res.data.invoice);
+        syncComplianceForm(res.data.invoice);
+        toast.success(res.data.message || "Compliance action completed");
+        return;
+      }
+
+      toast.error(res.data?.message || "Compliance action failed");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Compliance action failed");
+    } finally {
+      setActionLoading("");
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
@@ -236,6 +337,125 @@ export default function SalesInvoiceView() {
               </div>
             </div>
 
+            <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
+              <SectionHeader icon={FaFileInvoiceDollar} title="Compliance" color="teal" />
+              <div className="p-6 space-y-5">
+                <div className="grid grid-cols-1 gap-3">
+                  <div className={`rounded-2xl border px-4 py-3 ${statusTone(invoice.compliance?.eInvoice?.status)}`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">E-Invoice</p>
+                    <p className="mt-1 text-sm font-black">{invoice.compliance?.eInvoice?.status || "Not Generated"}</p>
+                    <p className="mt-1 text-[11px] font-medium">IRN: {invoice.compliance?.eInvoice?.irn || "—"}</p>
+                    <p className="text-[11px] font-medium">Ack: {invoice.compliance?.eInvoice?.ackNo || "—"}</p>
+                  </div>
+                  <div className={`rounded-2xl border px-4 py-3 ${statusTone(invoice.compliance?.eWayBill?.status)}`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em]">E-Way Bill</p>
+                    <p className="mt-1 text-sm font-black">{invoice.compliance?.eWayBill?.status || "Not Generated"}</p>
+                    <p className="mt-1 text-[11px] font-medium">EWB No: {invoice.compliance?.eWayBill?.ewbNo || "—"}</p>
+                    <p className="text-[11px] font-medium">Valid Till: {formatDate(invoice.compliance?.eWayBill?.validUpto)}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Lbl text="Supply Type" />
+                    <select name="supplyType" value={complianceForm.supplyType} onChange={handleComplianceInputChange} className={inputClassName}>
+                      <option value="B2B">B2B</option>
+                      <option value="SEZWP">SEZ With Payment</option>
+                      <option value="SEZWOP">SEZ Without Payment</option>
+                      <option value="EXPWP">Export With Payment</option>
+                      <option value="EXPWOP">Export Without Payment</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Lbl text="Transaction Type" />
+                    <input name="transactionType" value={complianceForm.transactionType} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Place Of Supply" />
+                    <input name="placeOfSupply" value={complianceForm.placeOfSupply} onChange={handleComplianceInputChange} className={inputClassName} placeholder="27" />
+                  </div>
+                  <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700">
+                    <input type="checkbox" name="reverseCharge" checked={complianceForm.reverseCharge} onChange={handleComplianceInputChange} />
+                    Reverse Charge
+                  </label>
+                  <div>
+                    <Lbl text="Transporter Name" />
+                    <input name="transporterName" value={complianceForm.transporterName} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Transporter ID" />
+                    <input name="transporterId" value={complianceForm.transporterId} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Transport Mode" />
+                    <select name="transportMode" value={complianceForm.transportMode} onChange={handleComplianceInputChange} className={inputClassName}>
+                      <option value="Road">Road</option>
+                      <option value="Rail">Rail</option>
+                      <option value="Air">Air</option>
+                      <option value="Ship">Ship</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Lbl text="Distance (KM)" />
+                    <input name="transportDistanceKm" type="number" value={complianceForm.transportDistanceKm} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Vehicle Number" />
+                    <input name="vehicleNumber" value={complianceForm.vehicleNumber} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Vehicle Type" />
+                    <select name="vehicleType" value={complianceForm.vehicleType} onChange={handleComplianceInputChange} className={inputClassName}>
+                      <option value="Regular">Regular</option>
+                      <option value="ODC">ODC</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Lbl text="Transport Document No." />
+                    <input name="transportDocumentNumber" value={complianceForm.transportDocumentNumber} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Transport Document Date" />
+                    <input type="date" name="transportDocumentDate" value={complianceForm.transportDocumentDate} onChange={handleComplianceInputChange} className={inputClassName} />
+                  </div>
+                  <div>
+                    <Lbl text="Cancel Reason" />
+                    <input name="cancelReason" value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} className={inputClassName} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => runComplianceAction("einvoice", "generate")} disabled={!!actionLoading} className="rounded-2xl bg-indigo-600 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-white disabled:opacity-60">
+                    {actionLoading === "einvoice:generate" ? "Working..." : "Generate E-Invoice"}
+                  </button>
+                  <button onClick={() => runComplianceAction("einvoice", "status")} disabled={!!actionLoading} className="rounded-2xl border border-indigo-200 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-indigo-600 disabled:opacity-60">
+                    {actionLoading === "einvoice:status" ? "Working..." : "Refresh E-Invoice"}
+                  </button>
+                  <button onClick={() => runComplianceAction("ewaybill", "generate")} disabled={!!actionLoading} className="rounded-2xl bg-emerald-600 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-white disabled:opacity-60">
+                    {actionLoading === "ewaybill:generate" ? "Working..." : "Generate E-Way Bill"}
+                  </button>
+                  <button onClick={() => runComplianceAction("ewaybill", "status")} disabled={!!actionLoading} className="rounded-2xl border border-emerald-200 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-emerald-700 disabled:opacity-60">
+                    {actionLoading === "ewaybill:status" ? "Working..." : "Refresh E-Way Bill"}
+                  </button>
+                  <button onClick={() => runComplianceAction("ewaybill", "update-vehicle")} disabled={!!actionLoading} className="rounded-2xl border border-amber-200 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-amber-700 disabled:opacity-60">
+                    {actionLoading === "ewaybill:update-vehicle" ? "Working..." : "Update Vehicle"}
+                  </button>
+                  <button onClick={() => runComplianceAction("ewaybill", "cancel")} disabled={!!actionLoading} className="rounded-2xl border border-rose-200 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-rose-700 disabled:opacity-60">
+                    {actionLoading === "ewaybill:cancel" ? "Working..." : "Cancel E-Way Bill"}
+                  </button>
+                  <button onClick={() => runComplianceAction("einvoice", "cancel")} disabled={!!actionLoading} className="col-span-2 rounded-2xl border border-rose-200 px-4 py-3 text-xs font-black uppercase tracking-[0.15em] text-rose-700 disabled:opacity-60">
+                    {actionLoading === "einvoice:cancel" ? "Working..." : "Cancel E-Invoice"}
+                  </button>
+                </div>
+
+                {(invoice.compliance?.eInvoice?.errorMessage || invoice.compliance?.eWayBill?.errorMessage) && (
+                  <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-medium text-rose-700">
+                    {invoice.compliance?.eInvoice?.errorMessage || invoice.compliance?.eWayBill?.errorMessage}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* PDF Attachments */}
             <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
               <SectionHeader icon={FaPaperclip} title="Stored Documents" color="purple" />
@@ -276,6 +496,7 @@ export default function SalesInvoiceView() {
           </div>
         </div>
       </div>
+      <ToastContainer position="bottom-right" autoClose={4000} />
     </div>
   );
 }

@@ -18,6 +18,89 @@ const BatchSchema = new Schema(
   { _id: false }
 );
 
+const InvoiceAddressSchema = new Schema(
+  {
+    address1: { type: String, trim: true },
+    address2: { type: String, trim: true },
+    city: { type: String, trim: true },
+    state: { type: String, trim: true },
+    pin: { type: String, trim: true },
+    country: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const CompliancePartySchema = new Schema(
+  {
+    tradeName: { type: String, trim: true },
+    legalName: { type: String, trim: true },
+    address1: { type: String, trim: true },
+    address2: { type: String, trim: true },
+    location: { type: String, trim: true },
+    pincode: { type: String, trim: true },
+    stateCode: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const EInvoiceSchema = new Schema(
+  {
+    status: { type: String, trim: true, default: "Not Generated" },
+    irn: { type: String, trim: true },
+    ackNo: { type: String, trim: true },
+    ackDate: { type: Date },
+    signedInvoice: { type: String },
+    signedQRCode: { type: String },
+    qrCodeData: { type: String },
+    requestId: { type: String, trim: true },
+    generatedAt: { type: Date },
+    cancelledAt: { type: Date },
+    cancelReason: { type: String, trim: true },
+    lastSyncedAt: { type: Date },
+    errorMessage: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const EWayBillSchema = new Schema(
+  {
+    status: { type: String, trim: true, default: "Not Generated" },
+    ewbNo: { type: String, trim: true },
+    ewbDate: { type: Date },
+    validUpto: { type: Date },
+    requestId: { type: String, trim: true },
+    generatedAt: { type: Date },
+    cancelledAt: { type: Date },
+    cancelReason: { type: String, trim: true },
+    lastSyncedAt: { type: Date },
+    errorMessage: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
+const ComplianceSchema = new Schema(
+  {
+    supplyType: { type: String, trim: true, default: "B2B" },
+    transactionType: { type: String, trim: true, default: "Regular" },
+    reverseCharge: { type: Boolean, default: false },
+    placeOfSupply: { type: String, trim: true },
+    exportType: { type: String, trim: true },
+    dispatchFrom: { type: CompliancePartySchema, default: () => ({}) },
+    shipTo: { type: CompliancePartySchema, default: () => ({}) },
+    transporterName: { type: String, trim: true },
+    transporterId: { type: String, trim: true },
+    transportMode: { type: String, trim: true },
+    transportDistanceKm: { type: Number, default: 0 },
+    vehicleNumber: { type: String, trim: true },
+    vehicleType: { type: String, trim: true },
+    transportDocumentNumber: { type: String, trim: true },
+    transportDocumentDate: { type: Date },
+    eInvoice: { type: EInvoiceSchema, default: () => ({}) },
+    eWayBill: { type: EWayBillSchema, default: () => ({}) },
+  },
+  { _id: false }
+);
+
 // Schema for each Sales Invoice item.
 const SalesInvoiceItemSchema = new Schema(
   {
@@ -72,6 +155,8 @@ const SalesInvoiceSchema = new Schema(
     customerCode: { type: String, required: true },
     customerName: { type: String, required: true },
     contactPerson: { type: String },
+    billingAddress: { type: InvoiceAddressSchema, default: null },
+    shippingAddress: { type: InvoiceAddressSchema, default: null },
     refNumber: { type: String },
     salesEmployee: { type: String },
     status: { type: String,  default: "Pending" },
@@ -103,6 +188,7 @@ const SalesInvoiceSchema = new Schema(
     // For handling copies:
     sourceId: { type: Schema.Types.ObjectId },
     sourceModel: { type: String, enum: ["salesorder", "delivery"] },
+    compliance: { type: ComplianceSchema, default: () => ({}) },
     attachments: [
       { 
        
