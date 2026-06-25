@@ -447,18 +447,21 @@ export default function Layout({ children }) {
                 <Item href="/admin/project/tasks"       icon={<HiPuzzle />}                label="Tasks List"  onClick={closeSidebar} isActive={isActive("/admin/project/tasks")} />
               </Section>
               <Section title="HR" icon={<HiUserGroup />} isOpen={openMenu === "hr"} onToggle={() => toggleMenu("hr")}>
-                <Item href="/admin/hr/employee-onboarding" icon={<HiUserGroup />} label="Employee Onboarding" onClick={closeSidebar} isActive={isActive("/admin/hr/employee-onboarding")} />
-                <Item href="/admin/hr/Dashboard"           icon={<HiUserGroup />} label="Employee Details"    onClick={closeSidebar} isActive={isActive("/admin/hr/Dashboard")} />
-                <Item href="/admin/hr/masters"             icon={<HiUserGroup />} label="Department"          onClick={closeSidebar} isActive={isActive("/admin/hr/masters")} />
-                <Item href="/admin/hr/leaves"              icon={<HiUserGroup />} label="Leave"               onClick={closeSidebar} isActive={isActive("/admin/hr/leaves")} />
-                <Item href="/admin/hr/attendance"          icon={<HiUserGroup />} label="Attendance"          onClick={closeSidebar} isActive={isActive("/admin/hr/attendance")} />
-                <Item href="/admin/hr/salary"              icon={<HiUserGroup />} label="Salary"              onClick={closeSidebar} isActive={isActive("/admin/hr/salary")} />
-                <Item href="/admin/hr/payroll"             icon={<HiUserGroup />} label="Payroll"             onClick={closeSidebar} isActive={isActive("/admin/hr/payroll")} />
-                <Item href="/admin/hr/employees"           icon={<HiUserGroup />} label="Employee"            onClick={closeSidebar} isActive={isActive("/admin/hr/employees")} />
-                <Item href="/admin/hr/reports"             icon={<HiUserGroup />} label="Reports"             onClick={closeSidebar} isActive={isActive("/admin/hr/reports")} />
-                <Item href="/admin/hr/settings"            icon={<HiCog />}       label="Settings"            onClick={closeSidebar} isActive={isActive("/admin/hr/settings")} />
+                <Item href="/admin/hr"                     icon={<HiViewGrid />}   label="HRMS Overview"       onClick={closeSidebar} isActive={isActive("/admin/hr")} />
+                <Item href="/admin/hr/Dashboard"           icon={<HiChartSquareBar />} label="HR Dashboard"   onClick={closeSidebar} isActive={isActive("/admin/hr/Dashboard")} />
+                <Item href="/admin/hr/employees"           icon={<HiUserGroup />} label="Employees"           onClick={closeSidebar} isActive={isActive("/admin/hr/employees")} />
+                <Item href="/admin/hr/employee-onboarding" icon={<HiUsers />}     label="Onboarding"          onClick={closeSidebar} isActive={isActive("/admin/hr/employee-onboarding")} />
+                <Item href="/admin/hr/attendance"          icon={<HiOutlineCreditCard />} label="Attendance"   onClick={closeSidebar} isActive={isActive("/admin/hr/attendance")} />
+                <Item href="/admin/hr/leaves"              icon={<HiDocumentText />} label="Leaves"           onClick={closeSidebar} isActive={isActive("/admin/hr/leaves")} />
+                <Item href="/admin/hr/payroll"             icon={<HiCurrencyDollar />} label="Payroll"        onClick={closeSidebar} isActive={isActive("/admin/hr/payroll")} />
+                <Item href="/admin/hr/salary"              icon={<HiReceiptTax />} label="Salary Structure"    onClick={closeSidebar} isActive={isActive("/admin/hr/salary")} />
+                <Item href="/admin/hr/masters"             icon={<HiOutlineOfficeBuilding />} label="Masters"  onClick={closeSidebar} isActive={isActive("/admin/hr/masters")} />
+                <Item href="/admin/hr/shifts"              icon={<HiOutlineLibrary />} label="Shifts"         onClick={closeSidebar} isActive={isActive("/admin/hr/shifts")} />
                 <Item href="/admin/hr/holidays"            icon={<HiGlobeAlt />}  label="Holidays"            onClick={closeSidebar} isActive={isActive("/admin/hr/holidays")} />
-                <Item href="/admin/hr/profile"             icon={<HiUser />}      label="Profile"             onClick={closeSidebar} isActive={isActive("/admin/hr/profile")} />
+                <Item href="/admin/hr/performance"         icon={<HiPuzzle />}     label="Performance"         onClick={closeSidebar} isActive={isActive("/admin/hr/performance")} />
+                <Item href="/admin/hr/reports"             icon={<HiChartSquareBar />} label="Reports"       onClick={closeSidebar} isActive={isActive("/admin/hr/reports")} />
+                <Item href="/admin/hr/settings"            icon={<HiCog />}       label="Settings"            onClick={closeSidebar} isActive={isActive("/admin/hr/settings")} />
+                <Item href="/admin/hr/profile"             icon={<HiUser />}      label="My Profile"          onClick={closeSidebar} isActive={isActive("/admin/hr/profile")} />
               </Section>
               <Section title="PPC" icon={<HiPuzzle />} isOpen={openMenu === "ppc"} onToggle={() => toggleMenu("ppc")}>
                 <Item href="/admin/ppc/operatorsPage"              icon={<HiUser />}           label="Operators"                onClick={closeSidebar} isActive={isActive("/admin/ppc/operatorsPage")} />
@@ -1855,7 +1858,6 @@ export default function Layout({ children }) {
 //     </div>
 //   );
 // }
-
 
 
 

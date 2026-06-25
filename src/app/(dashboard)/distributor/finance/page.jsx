@@ -1,3 +1,4 @@
+import { FinancePaymentDesk } from "@/components/distributor/DistributorInteractiveForms";
 import { Badge, DataTable, PageIntro, SectionHeading, StatGrid, Surface } from "@/components/distributor/DistributorUI";
 import { financeSummary, ledgerEntries } from "@/components/distributor/mockData";
 
@@ -28,6 +29,8 @@ export default function DistributorFinancePage() {
           }))}
         />
       </Surface>
+
+      <FinancePaymentDesk />
     </div>
   );
 }

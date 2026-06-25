@@ -10,6 +10,8 @@ import {
   FiCreditCard,
   FiGift,
   FiGrid,
+  FiKey,
+  FiHeadphones,
   FiMenu,
   FiPackage,
   FiTruck,
@@ -19,10 +21,7 @@ import {
 import { distributorUser } from "@/components/distributor/mockData";
 
 const navGroups = [
-  {
-    title: "Overview",
-    items: [{ label: "Dashboard", href: "/distributor", icon: FiGrid }],
-  },
+  { title: "Overview", items: [{ label: "Dashboard", href: "/distributor", icon: FiGrid }] },
   {
     title: "Commerce",
     items: [
@@ -41,6 +40,8 @@ const navGroups = [
       { label: "Dispatch", href: "/distributor/dispatch", icon: FiTruck },
       { label: "Notifications", href: "/distributor/notifications", icon: FiBell },
       { label: "Offers", href: "/distributor/offers", icon: FiGift },
+      { label: "Access", href: "/distributor/access", icon: FiKey },
+      { label: "Support", href: "/distributor/support", icon: FiHeadphones },
       { label: "Profile", href: "/distributor/profile", icon: FiUser },
     ],
   },
@@ -73,9 +74,7 @@ export default function DistributorShell({ children }) {
       >
         <div className="flex items-center justify-between">
           <Link href="/distributor" className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#105B92] text-lg font-semibold text-white">
-              EX
-            </div>
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#105B92] text-lg font-semibold text-white">EX</div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">ERPExpress</p>
               <p className="text-lg font-semibold text-slate-900">Distributor App</p>
@@ -87,9 +86,12 @@ export default function DistributorShell({ children }) {
         </div>
 
         <div className="mt-6 rounded-3xl bg-slate-50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Review User</p>
-          <p className="mt-2 text-sm font-semibold text-slate-900">{distributorUser.name}</p>
-          <p className="mt-1 text-xs text-slate-500">{distributorUser.code} • {distributorUser.city}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Account</p>
+          <p className="mt-2 text-sm font-semibold text-slate-900">{distributorUser.name || "Distributor account"}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {distributorUser.code || "No distributor code linked"}{distributorUser.city ? ` • ${distributorUser.city}` : ""}
+          </p>
+          <p className="mt-2 inline-flex rounded-full bg-blue-100 px-2 py-1 text-[11px] font-semibold text-blue-700">{distributorUser.userRole || "Role not assigned"}</p>
         </div>
 
         <nav className="mt-6 flex-1 space-y-6 overflow-y-auto pb-6">
@@ -128,15 +130,15 @@ export default function DistributorShell({ children }) {
                 <FiMenu size={20} />
               </button>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Frontend Review</p>
-                <h1 className="text-base font-semibold text-slate-900 sm:text-lg">Distributor experience preview</h1>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Distributor App</p>
+                <h1 className="text-base font-semibold text-slate-900 sm:text-lg">Distributor workspace</h1>
               </div>
             </div>
             <div className="hidden items-center gap-3 sm:flex">
-              <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Mock mode</div>
+              <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Setup mode</div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-slate-900">{distributorUser.route}</p>
-                <p className="text-xs text-slate-500">{distributorUser.preferredWarehouse}</p>
+                <p className="text-sm font-semibold text-slate-900">{distributorUser.route || "No route mapped"}</p>
+                <p className="text-xs text-slate-500">{distributorUser.preferredWarehouse || "No warehouse mapped"}</p>
               </div>
             </div>
           </div>

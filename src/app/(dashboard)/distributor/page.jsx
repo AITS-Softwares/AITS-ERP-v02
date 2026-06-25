@@ -27,6 +27,12 @@ export default function DistributorDashboardPage() {
       <EmptyStateNote />
       <StatGrid items={dashboardStats} />
 
+      {!orders.length && !notifications.length && !offers.length ? (
+        <Surface className="p-5 sm:p-6">
+          <p className="text-sm text-slate-500">No distributor dashboard data is connected yet. Link distributor accounts, orders, notifications, and offers to populate this view.</p>
+        </Surface>
+      ) : null}
+
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <Surface className="p-5 sm:p-6">
           <SectionHeading title="Recent orders" caption="High-visibility order tracking for mobile users." action={<ActionLink href="/distributor/orders/new" tone="dark">New order</ActionLink>} />

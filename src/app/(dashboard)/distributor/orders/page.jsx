@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ActionLink, Badge, DataTable, PageIntro, SectionHeading, StatGrid, Surface } from "@/components/distributor/DistributorUI";
 import { orders } from "@/components/distributor/mockData";
 
@@ -11,14 +12,15 @@ const orderStats = [
 export default function DistributorOrdersPage() {
   return (
     <div className="space-y-6">
-      <PageIntro
-        eyebrow="Order module"
-        title="Order history and reordering"
-        description="This screen is meant for fast repeat ordering on mobile, with large status blocks and quick access to checkout."
-        actions={<ActionLink href="/distributor/orders/new">Open checkout preview</ActionLink>}
-      />
+      <PageIntro eyebrow="Phase 2 - Order module" title="Order history and reordering" description="This phase adds drill-down order detail so repeat ordering and status checks feel closer to a production workflow." actions={<ActionLink href="/distributor/orders/new">Open checkout</ActionLink>} />
 
       <StatGrid items={orderStats} />
+
+      {!orders.length ? (
+        <Surface className="p-5 sm:p-6">
+          <p className="text-sm text-slate-500">No distributor orders are available yet.</p>
+        </Surface>
+      ) : null}
 
       <Surface className="p-5 sm:p-6">
         <SectionHeading title="Recent order timeline" caption="The mobile version can stack these cards vertically without losing important status information." />
@@ -32,6 +34,7 @@ export default function DistributorOrdersPage() {
           ]}
           rows={orders.map((order) => ({
             ...order,
+            id: <Link href={`/distributor/orders/${order.id}`} className="font-semibold text-[#105B92] hover:underline">{order.id}</Link>,
             status: <Badge tone={order.status === "Delivered" ? "green" : order.status === "Pending Approval" ? "amber" : "blue"}>{order.status}</Badge>,
           }))}
         />

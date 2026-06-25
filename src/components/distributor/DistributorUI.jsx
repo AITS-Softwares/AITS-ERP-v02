@@ -13,11 +13,7 @@ const toneClasses = {
 };
 
 export function Badge({ children, tone = "blue" }) {
-  return (
-    <span className={cx("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold", toneClasses[tone] || toneClasses.slate)}>
-      {children}
-    </span>
-  );
+  return <span className={cx("inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold", toneClasses[tone] || toneClasses.slate)}>{children}</span>;
 }
 
 export function Surface({ children, className = "" }) {
@@ -43,17 +39,15 @@ export function ActionLink({ href, children, tone = "light" }) {
     dark: "bg-slate-950 text-white hover:bg-slate-800",
     ghost: "border border-white/30 bg-white/10 text-white hover:bg-white/15",
   };
-  return (
-    <Link
-      href={href}
-      className={cx(
-        "inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition",
-        tones[tone] || tones.light
-      )}
-    >
-      {children}
-    </Link>
-  );
+  return <Link href={href} className={cx("inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition", tones[tone] || tones.light)}>{children}</Link>;
+}
+
+export function ActionButton({ children, tone = "dark" }) {
+  const tones = {
+    dark: "bg-slate-950 text-white hover:bg-slate-800",
+    light: "border border-slate-200 bg-white text-[#105B92] hover:bg-blue-50",
+  };
+  return <button className={cx("inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition", tones[tone] || tones.dark)}>{children}</button>;
 }
 
 export function StatGrid({ items }) {
@@ -133,10 +127,43 @@ export function MockInput({ label, value, hint }) {
   );
 }
 
-export function EmptyStateNote() {
+export function KeyValueGrid({ items }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">
-      Frontend review mode only. All numbers, lists, and actions on this section are mock placeholders for screen approval.
+    <div className="grid gap-3 sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item.label} className="rounded-2xl bg-slate-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">{item.label}</p>
+          <p className="mt-2 text-sm font-medium text-slate-800">{item.value}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function EmptyStateNote() {
+  return <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-500">This section will populate when distributor records and connected business data are available.</div>;
+}
+
+export function StatePanel({ title, description, tone = "slate" }) {
+  const tones = {
+    slate: "border-slate-200 bg-slate-50 text-slate-600",
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+  };
+  return (
+    <div className={cx("rounded-2xl border px-4 py-4", tones[tone] || tones.slate)}>
+      <p className="text-sm font-semibold">{title}</p>
+      <p className="mt-1 text-sm">{description}</p>
+    </div>
+  );
+}
+
+export function SkeletonCard() {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="h-3 w-24 animate-pulse rounded bg-slate-200"></div>
+      <div className="mt-4 h-7 w-28 animate-pulse rounded bg-slate-200"></div>
+      <div className="mt-4 h-3 w-40 animate-pulse rounded bg-slate-100"></div>
     </div>
   );
 }
