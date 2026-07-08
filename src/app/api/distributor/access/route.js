@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import DistributorAppUser from "@/models/DistributorAppUser";
-import { normalizeMobileNumber } from "@/lib/distributorAuth";
+import { normalizeEmailAddress, normalizeMobileNumber } from "@/lib/distributorAuth";
 
 export async function GET(req) {
   try {
@@ -12,7 +12,7 @@ export async function GET(req) {
 
     await dbConnect();
     const users = await DistributorAppUser.find({ distributorAccountId }).select(
-      "fullName mobileNumber role loginEnabled financeAccess isActive lastLoginAt"
+      "fullName mobileNumber emailAddress role loginEnabled financeAccess isActive lastLoginAt"
     );
 
     return NextResponse.json({ success: true, users });
@@ -30,6 +30,7 @@ export async function POST(req) {
       customerId,
       fullName,
       mobileNumber,
+      emailAddress,
       role,
       loginEnabled,
       financeAccess,
@@ -42,6 +43,7 @@ export async function POST(req) {
     await dbConnect();
 
     const normalizedMobile = normalizeMobileNumber(mobileNumber);
+    const normalizedEmail = normalizeEmailAddress(emailAddress);
     const user = await DistributorAppUser.findOneAndUpdate(
       { distributorAccountId, mobileNumber: normalizedMobile },
       {
@@ -50,6 +52,7 @@ export async function POST(req) {
         customerId: customerId || null,
         fullName,
         mobileNumber: normalizedMobile,
+        emailAddress: normalizedEmail,
         role: role || "Read only",
         loginEnabled: loginEnabled !== false,
         financeAccess: Boolean(financeAccess),

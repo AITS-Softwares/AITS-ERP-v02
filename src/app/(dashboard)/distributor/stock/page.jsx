@@ -1,28 +1,42 @@
+"use client";
+
 import { ActionLink, Badge, DataTable, PageIntro, SectionHeading, Surface } from "@/components/distributor/DistributorUI";
-import { stockItems } from "@/components/distributor/mockData";
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 
 export default function DistributorStockPage() {
+  const { data } = useDistributorAppData();
+  const stockItems = data.stockItems || [];
+
   return (
     <div className="space-y-6">
       <PageIntro
-        eyebrow="Stock module"
+        eyebrow="Stock"
         title="Live stock and warehouse visibility"
-        description="This screen will help distributors see availability before ordering and raise stock requests where supply is tight."
+        description="Review ERPNext stock visibility by item and warehouse, including actual, reserved, and projected quantity fields."
         actions={<ActionLink href="/distributor/stock/request">Request stock</ActionLink>}
       />
 
       <Surface className="p-5 sm:p-6">
-        <SectionHeading title="Warehouse stock" caption="Designed to remain readable on smaller devices using horizontally scrollable rows." />
+        <SectionHeading
+          title="Warehouse stock"
+          caption="Warehouse-wise quantities stay visible across desktop and mobile layouts."
+        />
+        {!stockItems.length ? <p className="mb-4 text-sm text-slate-500">No stock records are available for this distributor yet.</p> : null}
         <DataTable
           columns={[
-            { key: "item", label: "Item" },
+            { key: "itemCode", label: "Item Code" },
             { key: "warehouse", label: "Warehouse" },
-            { key: "available", label: "Available" },
-            { key: "reserved", label: "Reserved" },
+            { key: "actualQty", label: "Actual Qty" },
+            { key: "reservedQty", label: "Reserved Qty" },
+            { key: "projectedQty", label: "Projected Qty" },
             { key: "status", label: "Status" },
           ]}
           rows={stockItems.map((item) => ({
-            ...item,
+            itemCode: item.itemCode || item.item || "-",
+            warehouse: item.warehouseCode || item.warehouse || "-",
+            actualQty: item.actualQty ?? item.available ?? "-",
+            reservedQty: item.reservedQty ?? item.reserved ?? "-",
+            projectedQty: item.projectedQty ?? "-",
             status: <Badge tone={item.status === "Healthy" ? "green" : item.status === "Watch" ? "amber" : "red"}>{item.status}</Badge>,
           }))}
         />

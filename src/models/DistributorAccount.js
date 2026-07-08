@@ -8,6 +8,7 @@ const DistributorAccountSchema = new mongoose.Schema(
     displayName: { type: String, trim: true, required: true },
     territory: { type: String, trim: true, default: "" },
     preferredWarehouse: { type: String, trim: true, default: "" },
+    erpCustomerName: { type: String, trim: true, default: "" },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true, collection: "distributor_accounts" }

@@ -6,13 +6,16 @@ export default function DistributorAccessPage() {
   return (
     <div className="space-y-6">
       <PageIntro
-        eyebrow="Phase 2 - Identity and access"
+        eyebrow="Access"
         title="Distributor user access and OTP mapping"
-        description="This phase defines how multiple distributor users will log in, what each role can do, and how the app should map users back into ERPNext."
+        description="Configure distributor users, OTP login access, and role-wise permissions linked to the mapped ERPNext account."
       />
 
       <Surface className="p-5 sm:p-6">
-        <SectionHeading title="Role model" caption="Recommended frontend role structure before backend and ERPNext mapping." />
+        <SectionHeading
+          title="Role model"
+          caption="Role definitions keep access clear across ordering, finance, and account actions."
+        />
         <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
           {accessRoles.map((role) => (
             <div key={role.role} className="rounded-2xl border border-slate-200 p-4">

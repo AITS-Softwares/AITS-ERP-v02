@@ -7,6 +7,10 @@ export function normalizeMobileNumber(value = "") {
   return value.replace(/\D/g, "").slice(-10);
 }
 
+export function normalizeEmailAddress(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
 export function hashOtp(otp) {
   return crypto.createHash("sha256").update(String(otp)).digest("hex");
 }
@@ -22,6 +26,7 @@ export function signDistributorToken(user, account, trustedDevice = false) {
       distributorAccountId: account._id,
       companyId: user.companyId,
       mobileNumber: user.mobileNumber,
+      emailAddress: user.emailAddress || "",
       role: user.role,
       type: "distributor",
       trustedDevice,

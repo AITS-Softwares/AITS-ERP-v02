@@ -5,9 +5,9 @@ export default function DistributorCheckoutPage() {
   return (
     <div className="space-y-6">
       <PageIntro
-        eyebrow="Checkout screen"
-        title="Create order"
-        description="Checkout workspace with delivery notes, cart summary, pricing blocks, and payment selection."
+        eyebrow="Sales Order form"
+        title="Create Sales Order"
+        description="Distributor order workspace aligned to ERPNext Sales Order, item, shipping, and payment-related fields."
       />
 
       <CheckoutWorkbench />

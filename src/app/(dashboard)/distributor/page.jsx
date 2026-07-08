@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ActionLink,
   Badge,
@@ -8,13 +10,22 @@ import {
   StatGrid,
   Surface,
 } from "@/components/distributor/DistributorUI";
-import { dashboardStats, notifications, offers, orders, quickActions } from "@/components/distributor/mockData";
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
+import { quickActions } from "@/components/distributor/mockData";
 
 export default function DistributorDashboardPage() {
+  const { loading, data } = useDistributorAppData();
+  const {
+    dashboardStats = [],
+    notifications = [],
+    offers = [],
+    orders = [],
+  } = data;
+
   return (
     <div className="space-y-6">
       <PageIntro
-        eyebrow="Phase 1 review"
+        eyebrow="Overview"
         title="Distributor dashboard"
         description="This home screen gives the distributor one place to see open orders, stock-sensitive items, outstanding balance, promotions, and quick actions."
         actions={quickActions.map((action) => (
@@ -24,24 +35,30 @@ export default function DistributorDashboardPage() {
         ))}
       />
 
-      <EmptyStateNote />
+      {loading ? <EmptyStateNote /> : null}
       <StatGrid items={dashboardStats} />
 
       {!orders.length && !notifications.length && !offers.length ? (
         <Surface className="p-5 sm:p-6">
-          <p className="text-sm text-slate-500">No distributor dashboard data is connected yet. Link distributor accounts, orders, notifications, and offers to populate this view.</p>
+          <p className="text-sm text-slate-500">
+            No distributor dashboard data is connected yet. Link distributor accounts, orders, notifications, and offers to populate this view.
+          </p>
         </Surface>
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <Surface className="p-5 sm:p-6">
-          <SectionHeading title="Recent orders" caption="High-visibility order tracking for mobile users." action={<ActionLink href="/distributor/orders/new" tone="dark">New order</ActionLink>} />
+          <SectionHeading
+            title="Recent orders"
+            caption="High-visibility order tracking for mobile users."
+            action={<ActionLink href="/distributor/orders/new" tone="dark">New order</ActionLink>}
+          />
           <DataTable
             columns={[
               { key: "id", label: "Order" },
-              { key: "date", label: "Date" },
+              { key: "postingDate", label: "Date" },
               { key: "status", label: "Status" },
-              { key: "amount", label: "Amount" },
+              { key: "grandTotal", label: "Amount" },
             ]}
             rows={orders.map((order) => ({
               ...order,
@@ -52,7 +69,7 @@ export default function DistributorDashboardPage() {
 
         <div className="space-y-6">
           <Surface className="p-5 sm:p-6">
-            <SectionHeading title="Alert center" caption="Push notification content block for mobile and web." />
+            <SectionHeading title="Alert center" caption="Operational updates, reminders, and distributor notifications." />
             <div className="space-y-4">
               {notifications.map((item) => (
                 <div key={item.id} className="rounded-2xl bg-slate-50 p-4">
@@ -67,7 +84,7 @@ export default function DistributorDashboardPage() {
           </Surface>
 
           <Surface className="p-5 sm:p-6">
-            <SectionHeading title="Live offers" caption="Promotions block that later pulls from ERPNext or a custom source." />
+            <SectionHeading title="Live offers" caption="Current offers and schemes linked to distributor sales activity." />
             <div className="space-y-4">
               {offers.map((offer) => (
                 <div key={offer.title} className="rounded-2xl border border-slate-200 p-4">

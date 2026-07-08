@@ -366,6 +366,15 @@ export default function Layout({ children }) {
                 <Item href="/admin/price-list"           icon={<HiOutlineOfficeBuilding />} label="Price List"                   onClick={closeSidebar} isActive={isActive("/admin/price-list")} />
               </Section>
 
+              <Section title="Distributor Ops" icon={<HiBell />} isOpen={openMenu === "distributorOps"} onToggle={() => toggleMenu("distributorOps")}>
+                <Item href="/admin/distributor-mapping" icon={<HiUsers />} label="Distributor Mapping" onClick={closeSidebar} isActive={isActive("/admin/distributor-mapping")} />
+                <Item href="/admin/distributor-operations" icon={<HiBell />} label="Workflow Review" onClick={closeSidebar} isActive={isActive("/admin/distributor-operations")} />
+                <Item href="/admin/distributor-users" icon={<HiUserGroup />} label="Distributor Users" onClick={closeSidebar} isActive={isActive("/admin/distributor-users")} />
+                <Item href="/admin/distributor-offers" icon={<HiDocumentText />} label="Offers & Schemes" onClick={closeSidebar} isActive={isActive("/admin/distributor-offers")} />
+                <Item href="/admin/distributor-sync-logs" icon={<HiOutlineLibrary />} label="Sync Logs" onClick={closeSidebar} isActive={isActive("/admin/distributor-sync-logs")} />
+                <Item href="/admin/distributor-otp" icon={<HiOutlineCreditCard />} label="OTP Delivery" onClick={closeSidebar} isActive={isActive("/admin/distributor-otp")} />
+              </Section>
+
               <Section title="Transactions View" icon={<HiOutlineCreditCard />} isOpen={openMenu === "transactionsView"} onToggle={() => toggleMenu("transactionsView")}>
                 <Submenu isOpen={!!openSubmenus["tvSales"]} onToggle={() => toggleSubmenu("tvSales")} icon={<HiShoppingCart />} label="Sales">
                   <Item href="/admin/sales-quotation-view" icon={<SiCivicrm />}           label="Quotation View"  onClick={closeSidebar} isActive={isActive("/admin/sales-quotation-view")} />
@@ -1858,6 +1867,3 @@ export default function Layout({ children }) {
 //     </div>
 //   );
 // }
-
-
-

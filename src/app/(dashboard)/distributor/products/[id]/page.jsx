@@ -1,25 +1,41 @@
-import { notFound } from "next/navigation";
-import { ActionButton, Badge, KeyValueGrid, PageIntro, StatePanel, Surface } from "@/components/distributor/DistributorUI";
-import { getProductById } from "@/components/distributor/mockData";
+"use client";
 
-export default function DistributorProductDetailPage({ params }) {
-  const product = getProductById(params.id);
-  if (!product) notFound();
+import { useParams } from "next/navigation";
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
+import { ActionButton, Badge, KeyValueGrid, PageIntro, StatePanel, Surface } from "@/components/distributor/DistributorUI";
+
+export default function DistributorProductDetailPage() {
+  const params = useParams();
+  const { data } = useDistributorAppData();
+  const product = (data.products || []).find((item) => String(item.itemCode || item.id) === String(params.id));
+
+  if (!product) {
+    return (
+      <div className="space-y-6">
+        <PageIntro eyebrow="Item detail" title="Record not found" description="The selected Item is not available for this distributor account." />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <PageIntro eyebrow="Product detail" title={product.name} description={product.description} actions={<><ActionButton>Add to cart</ActionButton><Badge tone="green">{product.stock}</Badge></>} />
+      <PageIntro
+        eyebrow="Item detail"
+        title={product.itemName || product.name}
+        description={product.description || "ERPNext Item detail for distributor pricing and stock review."}
+        actions={<><ActionButton>Add to cart</ActionButton><Badge tone="green">{product.stock || product.projectedQty || "Stock pending"}</Badge></>}
+      />
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <Surface className="p-6">
           <KeyValueGrid
             items={[
-              { label: "Item code", value: product.id },
-              { label: "Category", value: product.category },
-              { label: "Brand", value: product.brand },
-              { label: "Case pack", value: product.pack },
-              { label: "MOQ", value: product.moq },
-              { label: "Lead time", value: product.leadTime },
+              { label: "Item code", value: product.itemCode || product.id },
+              { label: "Item group", value: product.itemGroup || "Pending" },
+              { label: "Stock UOM", value: product.stockUom || "Pending" },
+              { label: "Standard rate", value: product.standardRate || "Pending" },
+              { label: "Reorder level", value: product.reorderLevel || "Pending" },
+              { label: "GST rate", value: product.gstRate ? `${product.gstRate}%` : "Pending" },
             ]}
           />
         </Surface>
@@ -27,13 +43,18 @@ export default function DistributorProductDetailPage({ params }) {
         <Surface className="p-6">
           <div className="space-y-3">
             <p className="text-sm font-semibold text-slate-900">Commercial summary</p>
-            <StatePanel tone="blue" title={`Distributor price: ${product.price}`} description={`Current scheme: ${product.scheme}`} />
+            <StatePanel tone="blue" title={`Distributor rate: ${product.standardRate || "Pending"}`} description={`Scheme: ${product.scheme || "Available after pricing sync"}`} />
             <div className="grid gap-3">
-              {product.highlights.map((item) => (
+              {(product.highlights || []).map((item) => (
                 <div key={item} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
                   {item}
                 </div>
               ))}
+              {!(product.highlights || []).length ? (
+                <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                  Item-level pricing notes, scheme tags, and stock notes will appear after ERPNext sync.
+                </div>
+              ) : null}
             </div>
           </div>
         </Surface>

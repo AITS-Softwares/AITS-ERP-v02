@@ -1,11 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 import { FormCard, MockInput, PageIntro, SectionHeading, Surface } from "@/components/distributor/DistributorUI";
-import { distributorUser, savedAddresses, teamMembers } from "@/components/distributor/mockData";
 
 export default function DistributorProfilePage() {
+  const { data } = useDistributorAppData();
+  const distributorUser = data.profile || {};
+  const savedAddresses = data.savedAddresses || [];
+  const teamMembers = data.teamMembers || [];
+
   return (
     <div className="space-y-6">
-      <PageIntro eyebrow="Phase 1 - Multi-user readiness" title="Distributor profile and account controls" description="This phase adds team access and saved address sections so the frontend already reflects real distributor account usage." />
+      <PageIntro
+        eyebrow="Profile"
+        title="Distributor profile and account controls"
+        description="Manage ERPNext-linked customer details, team access, and saved delivery addresses from one account view."
+      />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <Surface className="p-6">
@@ -13,7 +24,8 @@ export default function DistributorProfilePage() {
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100">Mapped distributor</p>
             <h2 className="mt-3 text-2xl font-semibold">{distributorUser.name || "Distributor account"}</h2>
             <p className="mt-2 text-sm text-blue-100">
-              {distributorUser.code || "No distributor code"}{distributorUser.city ? ` • ${distributorUser.city}` : ""}
+              {distributorUser.code || "No distributor code"}
+              {distributorUser.city ? ` | ${distributorUser.city}` : ""}
             </p>
           </div>
           <div className="mt-5 grid gap-3 text-sm">
@@ -30,14 +42,14 @@ export default function DistributorProfilePage() {
 
         <FormCard title="Business details" description="Profile fields will populate from mapped distributor and ERPNext customer records.">
           <div className="grid gap-4 sm:grid-cols-2">
-            <MockInput label="Business name" value={distributorUser.name || "Pending configuration"} />
-            <MockInput label="Distributor code" value={distributorUser.code || "Pending configuration"} />
-            <MockInput label="Primary phone" value={distributorUser.phone || "Pending configuration"} />
-            <MockInput label="Territory route" value={distributorUser.route || "Pending configuration"} />
-            <MockInput label="Preferred warehouse" value={distributorUser.preferredWarehouse || "Pending configuration"} />
+            <MockInput label="Customer name" value={distributorUser.name || "Pending configuration"} />
+            <MockInput label="Customer / distributor code" value={distributorUser.code || "Pending configuration"} />
+            <MockInput label="Contact mobile" value={distributorUser.phone || "Pending configuration"} />
+            <MockInput label="Territory" value={distributorUser.route || "Pending configuration"} />
+            <MockInput label="Default warehouse" value={distributorUser.preferredWarehouse || "Pending configuration"} />
             <MockInput label="Login mode" value="Mobile OTP" />
           </div>
-          <MockInput label="Address" value="Address will appear after distributor mapping is completed." />
+          <MockInput label="Billing / shipping address" value={savedAddresses[0]?.address || "Address will appear after distributor mapping is completed."} />
         </FormCard>
       </div>
 
@@ -67,7 +79,7 @@ export default function DistributorProfilePage() {
         </Surface>
 
         <Surface className="p-5 sm:p-6">
-          <SectionHeading title="Saved delivery addresses" caption="Important for smooth mobile ordering and repeat dispatches." />
+          <SectionHeading title="Saved delivery addresses" caption="Saved addresses support repeat ordering and dispatch planning." />
           <div className="space-y-3">
             {savedAddresses.length ? savedAddresses.map((address) => (
               <div key={address.label} className="rounded-2xl border border-slate-200 p-4">

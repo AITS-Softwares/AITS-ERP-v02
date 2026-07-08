@@ -1,7 +1,12 @@
+"use client";
+
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 import { Badge, PageIntro, SectionHeading, Surface } from "@/components/distributor/DistributorUI";
-import { notifications } from "@/components/distributor/mockData";
 
 export default function DistributorNotificationsPage() {
+  const { data } = useDistributorAppData();
+  const notifications = data.notifications || [];
+
   return (
     <div className="space-y-6">
       <PageIntro

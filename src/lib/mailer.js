@@ -4,33 +4,56 @@ import nodemailer from "nodemailer";
 const host = process.env.SMTP_HOST || "smtp.gmail.com";
 const user = process.env.SMTP_USER;
 const pass = process.env.SMTP_PASS;
+const from = process.env.SMTP_FROM || user;
 
 const port = Number(
   process.env.SMTP_PORT || (process.env.SMTP_SECURE === "false" ? 587 : 465)
 );
-const secure = port === 465;
+const secure = process.env.SMTP_SECURE
+  ? process.env.SMTP_SECURE === "true"
+  : port === 465;
 
 let cachedTransporter = null;
 
-function getTransporter() {
-  if (cachedTransporter) return cachedTransporter;
+function buildTransporter(config = {}) {
+  const resolvedHost = config.host || host;
+  const resolvedPort = Number(
+    config.port || process.env.SMTP_PORT || (process.env.SMTP_SECURE === "false" ? 587 : 465)
+  );
+  const resolvedSecure = typeof config.secure === "boolean"
+    ? config.secure
+    : process.env.SMTP_SECURE
+      ? process.env.SMTP_SECURE === "true"
+      : resolvedPort === 465;
+  const resolvedUser = config.user || user;
+  const resolvedPass = config.pass || pass;
 
-  cachedTransporter = nodemailer.createTransport({
-    host,
-    port,
-    secure,
-    auth: { user, pass },
+  return nodemailer.createTransport({
+    host: resolvedHost,
+    port: resolvedPort,
+    secure: resolvedSecure,
+    auth: { user: resolvedUser, pass: resolvedPass },
     tls: { rejectUnauthorized: false },
   });
+}
+
+function getTransporter(config = null) {
+  if (config) {
+    return buildTransporter(config);
+  }
+
+  if (cachedTransporter) return cachedTransporter;
+
+  cachedTransporter = buildTransporter();
 
   return cachedTransporter;
 }
 
-export async function sendMail({ to, subject, html }) {
-  const transporter = getTransporter();
+export async function sendMail({ to, subject, html, from: customFrom, smtpConfig }) {
+  const transporter = getTransporter(smtpConfig);
 
   return transporter.sendMail({
-    from: user,
+    from: customFrom || from,
     to,
     subject,
     html,
@@ -626,5 +649,3 @@ export async function sendLeaveMail({ to, employee, status, from, to: end }) {
     `,
   });
 }
-
-

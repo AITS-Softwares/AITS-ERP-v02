@@ -1,66 +1,81 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import {
-  FiBell,
-  FiBox,
-  FiClipboard,
-  FiCreditCard,
-  FiGift,
-  FiGrid,
-  FiKey,
-  FiHeadphones,
+  FiChevronLeft,
   FiMenu,
-  FiPackage,
-  FiTruck,
-  FiUser,
   FiX,
 } from "react-icons/fi";
-import { distributorUser } from "@/components/distributor/mockData";
-
-const navGroups = [
-  { title: "Overview", items: [{ label: "Dashboard", href: "/distributor", icon: FiGrid }] },
-  {
-    title: "Commerce",
-    items: [
-      { label: "Products", href: "/distributor/products", icon: FiBox },
-      { label: "Orders", href: "/distributor/orders", icon: FiPackage },
-      { label: "Stock", href: "/distributor/stock", icon: FiClipboard },
-      { label: "Invoices", href: "/distributor/invoices", icon: FiCreditCard },
-      { label: "Finance", href: "/distributor/finance", icon: FiCreditCard },
-    ],
-  },
-  {
-    title: "Support",
-    items: [
-      { label: "Complaints", href: "/distributor/complaints", icon: FiClipboard },
-      { label: "Credit Notes", href: "/distributor/credit-notes", icon: FiCreditCard },
-      { label: "Dispatch", href: "/distributor/dispatch", icon: FiTruck },
-      { label: "Notifications", href: "/distributor/notifications", icon: FiBell },
-      { label: "Offers", href: "/distributor/offers", icon: FiGift },
-      { label: "Access", href: "/distributor/access", icon: FiKey },
-      { label: "Support", href: "/distributor/support", icon: FiHeadphones },
-      { label: "Profile", href: "/distributor/profile", icon: FiUser },
-    ],
-  },
-];
-
-const mobileNav = [
-  { label: "Home", href: "/distributor", icon: FiGrid },
-  { label: "Products", href: "/distributor/products", icon: FiBox },
-  { label: "Orders", href: "/distributor/orders", icon: FiPackage },
-  { label: "Profile", href: "/distributor/profile", icon: FiUser },
-];
-
-function navIsActive(pathname, href) {
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
+import {
+  distributorNavGroups,
+  distributorMobileNav,
+  getDistributorHeaderMeta,
+  getParentDistributorPath,
+  getRouteLabel,
+  navIsActive,
+} from "@/components/distributor/distributorNav";
 
 export default function DistributorShell({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [previousPath, setPreviousPath] = useState("");
+  const { loading, data } = useDistributorAppData();
+  const profile = data.profile || {};
+  const source = data.source || null;
+  const headerMeta = useMemo(() => getDistributorHeaderMeta(pathname), [pathname]);
+  const sourceTone = source?.mode === "erpnext"
+    ? "emerald"
+    : ["erpnext-error", "erpnext-not-mapped", "erpnext-not-configured"].includes(source?.mode)
+      ? "amber"
+      : "slate";
+  const sourceLabel = loading
+    ? "Loading"
+    : source?.mode === "erpnext"
+      ? "Live ERPNext"
+      : source?.mode === "erpnext-error"
+        ? "Sync issue"
+        : ["erpnext-not-mapped", "erpnext-not-configured"].includes(source?.mode)
+          ? "Setup required"
+          : "Workspace";
+  const sourceDetail = source?.mode === "erpnext"
+    ? profile.preferredWarehouse || "ERPNext customer linked"
+    : source?.mode === "erpnext-not-mapped"
+      ? "Map this distributor to an ERPNext customer"
+      : source?.mode === "erpnext-not-configured"
+        ? "Complete ERPNext connection setup"
+        : source?.mode === "erpnext-error"
+          ? "Check ERPNext field mapping and sync"
+          : profile.preferredWarehouse || "Distributor workspace";
+  const mobileBackPath = useMemo(() => {
+    if (previousPath && previousPath.startsWith("/distributor") && previousPath !== pathname) {
+      return previousPath;
+    }
+    return getParentDistributorPath(pathname);
+  }, [pathname, previousPath]);
+  const mobileBackLabel = useMemo(() => {
+    if (!mobileBackPath) return "";
+    return `Back to ${getRouteLabel(mobileBackPath)}`;
+  }, [mobileBackPath]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !pathname?.startsWith("/distributor")) return;
+
+    const currentPath = window.sessionStorage.getItem("distributor-current-path") || "";
+    const storedPreviousPath = window.sessionStorage.getItem("distributor-previous-path") || "";
+
+    if (currentPath && currentPath !== pathname) {
+      window.sessionStorage.setItem("distributor-previous-path", currentPath);
+      setPreviousPath(currentPath);
+    } else {
+      setPreviousPath(storedPreviousPath);
+    }
+
+    window.sessionStorage.setItem("distributor-current-path", pathname);
+  }, [pathname]);
 
   return (
     <div className="min-h-screen bg-[#F6F8FB] text-slate-900">
@@ -87,15 +102,15 @@ export default function DistributorShell({ children }) {
 
         <div className="mt-6 rounded-3xl bg-slate-50 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Account</p>
-          <p className="mt-2 text-sm font-semibold text-slate-900">{distributorUser.name || "Distributor account"}</p>
+          <p className="mt-2 text-sm font-semibold text-slate-900">{profile.name || "Distributor account"}</p>
           <p className="mt-1 text-xs text-slate-500">
-            {distributorUser.code || "No distributor code linked"}{distributorUser.city ? ` • ${distributorUser.city}` : ""}
+            {profile.code || "No distributor code linked"}{profile.city ? ` | ${profile.city}` : ""}
           </p>
-          <p className="mt-2 inline-flex rounded-full bg-blue-100 px-2 py-1 text-[11px] font-semibold text-blue-700">{distributorUser.userRole || "Role not assigned"}</p>
+          <p className="mt-2 inline-flex rounded-full bg-blue-100 px-2 py-1 text-[11px] font-semibold text-blue-700">{profile.userRole || "Role not assigned"}</p>
         </div>
 
         <nav className="mt-6 flex-1 space-y-6 overflow-y-auto pb-6">
-          {navGroups.map((group) => (
+          {distributorNavGroups.map((group) => (
             <div key={group.title}>
               <p className="px-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{group.title}</p>
               <div className="mt-3 space-y-1">
@@ -130,15 +145,46 @@ export default function DistributorShell({ children }) {
                 <FiMenu size={20} />
               </button>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">Distributor App</p>
-                <h1 className="text-base font-semibold text-slate-900 sm:text-lg">Distributor workspace</h1>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{headerMeta.eyebrow}</p>
+                <h1 className="text-base font-semibold text-slate-900 sm:text-lg">{headerMeta.title}</h1>
+                {mobileBackPath ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push(mobileBackPath)}
+                    className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-[#105B92] lg:hidden"
+                  >
+                    <FiChevronLeft size={14} />
+                    <span>{mobileBackLabel}</span>
+                  </button>
+                ) : null}
+                <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
+                  {headerMeta.breadcrumbs.map((crumb, index) => (
+                    <span key={`${crumb.href}-${crumb.label}`} className="inline-flex items-center gap-1">
+                      {index > 0 ? <span>/</span> : null}
+                      {index === headerMeta.breadcrumbs.length - 1 ? (
+                        <span className="font-semibold text-slate-700">{crumb.label}</span>
+                      ) : (
+                        <Link href={crumb.href} className="transition hover:text-[#105B92]">
+                          {crumb.label}
+                        </Link>
+                      )}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="hidden items-center gap-3 sm:flex">
-              <div className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">Setup mode</div>
+              <div className={[
+                "rounded-full px-3 py-1 text-xs font-semibold",
+                sourceTone === "emerald"
+                  ? "bg-emerald-100 text-emerald-700"
+                  : sourceTone === "amber"
+                    ? "bg-amber-100 text-amber-700"
+                    : "bg-slate-100 text-slate-700",
+              ].join(" ")}>{sourceLabel}</div>
               <div className="text-right">
-                <p className="text-sm font-semibold text-slate-900">{distributorUser.route || "No route mapped"}</p>
-                <p className="text-xs text-slate-500">{distributorUser.preferredWarehouse || "No warehouse mapped"}</p>
+                <p className="text-sm font-semibold text-slate-900">{profile.route || "No territory mapped"}</p>
+                <p className="text-xs text-slate-500">{sourceDetail}</p>
               </div>
             </div>
           </div>
@@ -148,8 +194,8 @@ export default function DistributorShell({ children }) {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-3 py-2 backdrop-blur lg:hidden">
-        <div className="grid grid-cols-4 gap-2">
-          {mobileNav.map((item) => {
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {distributorMobileNav.map((item) => {
             const Icon = item.icon;
             const active = navIsActive(pathname, item.href);
             return (
@@ -157,7 +203,7 @@ export default function DistributorShell({ children }) {
                 key={item.href}
                 href={item.href}
                 className={[
-                  "flex flex-col items-center rounded-2xl px-2 py-2 text-[11px] font-medium transition",
+                  "flex min-w-[72px] flex-col items-center rounded-2xl px-3 py-2 text-[11px] font-medium transition",
                   active ? "bg-blue-50 text-[#105B92]" : "text-slate-500",
                 ].join(" ")}
               >

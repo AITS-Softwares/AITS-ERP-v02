@@ -1,9 +1,16 @@
 const DEFAULT_TIMEOUT_MS = 15000;
 
-function getConfig() {
+function normalizeBaseUrl(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\/app\/home\/?$/i, "")
+    .replace(/\/+$/, "");
+}
+
+export function getERPNextEnvConfig() {
   const baseUrl = process.env.ERP_NEXT_URL
-    ?.replace(/\/app\/home\/?$/, "")
-    ?.replace(/\/+$/, "");
+    ? normalizeBaseUrl(process.env.ERP_NEXT_URL)
+    : "";
   const apiKey = process.env.ERP_NEXT_API_KEY;
   const apiSecret = process.env.ERP_NEXT_API_SECRET;
 
@@ -31,10 +38,13 @@ export class ERPNextError extends Error {
   }
 }
 
-export async function erpnextRequest(path, { method = "POST", body } = {}) {
-  const config = getConfig();
+export async function erpnextRequestWithConfig(config, path, { method = "POST", body } = {}) {
+  if (!config?.baseUrl || !config?.apiKey || !config?.apiSecret) {
+    throw new ERPNextError("ERPNext integration is not configured", { code: "CONFIG_MISSING" });
+  }
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), config.timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), config.timeoutMs || DEFAULT_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${config.baseUrl}${path}`, {
@@ -67,4 +77,8 @@ export async function erpnextRequest(path, { method = "POST", body } = {}) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function erpnextRequest(path, options = {}) {
+  return erpnextRequestWithConfig(getERPNextEnvConfig(), path, options);
 }

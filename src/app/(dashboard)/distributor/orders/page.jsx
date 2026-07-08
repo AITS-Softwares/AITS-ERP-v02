@@ -1,41 +1,64 @@
+"use client";
+
 import Link from "next/link";
 import { ActionLink, Badge, DataTable, PageIntro, SectionHeading, StatGrid, Surface } from "@/components/distributor/DistributorUI";
-import { orders } from "@/components/distributor/mockData";
-
-const orderStats = [
-  { label: "Draft Orders", value: "3", change: "Awaiting confirmation" },
-  { label: "Pending Approval", value: "2", change: "Company side review" },
-  { label: "Ready To Dispatch", value: "5", change: "Vehicle planning started" },
-  { label: "Delivered This Week", value: "8", change: "On-time rate 96%" },
-];
+import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 
 export default function DistributorOrdersPage() {
+  const { data } = useDistributorAppData();
+  const orders = data.orders || [];
+  const orderStats = [
+    { label: "Open Sales Orders", value: String(orders.length), change: "Distributor-linked orders" },
+    { label: "Pending Approval", value: String(orders.filter((order) => order.status === "Pending Approval").length), change: "Commercial review" },
+    { label: "Delivery In Progress", value: String(orders.filter((order) => ["Ready To Dispatch", "Dispatched"].includes(order.status)).length), change: "Delivery note planning active" },
+    { label: "Completed", value: String(orders.filter((order) => order.status === "Delivered").length), change: "Closed Sales Orders" },
+  ];
+
   return (
     <div className="space-y-6">
-      <PageIntro eyebrow="Phase 2 - Order module" title="Order history and reordering" description="This phase adds drill-down order detail so repeat ordering and status checks feel closer to a production workflow." actions={<ActionLink href="/distributor/orders/new">Open checkout</ActionLink>} />
+      <PageIntro
+        eyebrow="Sales Orders"
+        title="Order history and reordering"
+        description="Track ERPNext Sales Orders, review posting and delivery dates, and reopen repeat purchases from a single workflow."
+        actions={<ActionLink href="/distributor/orders/new">Open checkout</ActionLink>}
+      />
 
       <StatGrid items={orderStats} />
 
       {!orders.length ? (
         <Surface className="p-5 sm:p-6">
-          <p className="text-sm text-slate-500">No distributor orders are available yet.</p>
+          <p className="text-sm text-slate-500">No ERPNext Sales Order records are available for this distributor yet.</p>
         </Surface>
       ) : null}
 
       <Surface className="p-5 sm:p-6">
-        <SectionHeading title="Recent order timeline" caption="The mobile version can stack these cards vertically without losing important status information." />
+        <SectionHeading
+          title="Recent order timeline"
+          caption="Review recent orders with status, quantity, and value in a compact mobile-friendly layout."
+        />
         <DataTable
           columns={[
-            { key: "id", label: "Order ID" },
-            { key: "date", label: "Placed On" },
-            { key: "items", label: "Items" },
+            { key: "id", label: "Sales Order" },
+            { key: "postingDate", label: "Posting Date" },
+            { key: "deliveryDate", label: "Delivery Date" },
             { key: "status", label: "Status" },
-            { key: "amount", label: "Amount" },
+            { key: "grandTotal", label: "Grand Total" },
           ]}
           rows={orders.map((order) => ({
             ...order,
-            id: <Link href={`/distributor/orders/${order.id}`} className="font-semibold text-[#105B92] hover:underline">{order.id}</Link>,
-            status: <Badge tone={order.status === "Delivered" ? "green" : order.status === "Pending Approval" ? "amber" : "blue"}>{order.status}</Badge>,
+            postingDate: order.postingDate || order.date || "-",
+            deliveryDate: order.expectedDeliveryDate || order.deliveryDate || "-",
+            grandTotal: order.grandTotal || order.amount || "-",
+            id: (
+              <Link href={`/distributor/orders/${order.documentNumberOrder || order.id}`} className="font-semibold text-[#105B92] hover:underline">
+                {order.documentNumberOrder || order.id}
+              </Link>
+            ),
+            status: (
+              <Badge tone={order.status === "Delivered" ? "green" : order.status === "Pending Approval" ? "amber" : "blue"}>
+                {order.status}
+              </Badge>
+            ),
           }))}
         />
       </Surface>

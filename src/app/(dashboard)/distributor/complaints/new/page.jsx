@@ -7,7 +7,7 @@ export default function DistributorNewComplaintPage() {
       <PageIntro
         eyebrow="Complaint form"
         title="Raise invoice complaint"
-        description="This form is designed for fast capture on phone screens, with invoice-first selection and the ability to attach photos later."
+        description="Distributor complaint form aligned to Sales Invoice-led issue capture, remarks, and supporting proof."
       />
 
       <ComplaintFormWorkbench />

@@ -4,13 +4,20 @@ import { supportChannels } from "@/components/distributor/mockData";
 export default function DistributorSupportPage() {
   return (
     <div className="space-y-6">
-      <PageIntro eyebrow="Phase 2 - Support module" title="Help and support" description="A dedicated support screen is useful in production because mobile users need a fast path to contact the right team without searching through menus." />
+      <PageIntro
+        eyebrow="Support"
+        title="Help and support"
+        description="Give distributors a direct path to the right support team for operational, finance, and account issues."
+      />
 
       <Surface className="p-5 sm:p-6">
-        <SectionHeading title="Support channels" caption="Each team can later map to call, email, WhatsApp, or ticket actions." />
+        <SectionHeading
+          title="Support channels"
+          caption="Support teams can be reached from a dedicated distributor help center."
+        />
         <div className="grid gap-4 lg:grid-cols-3">
           {supportChannels.map((item) => (
-            <StatePanel key={item.title} tone="blue" title={item.title} description={`${item.detail} • ${item.note}`} />
+            <StatePanel key={item.title} tone="blue" title={item.title} description={`${item.detail} - ${item.note}`} />
           ))}
         </div>
       </Surface>

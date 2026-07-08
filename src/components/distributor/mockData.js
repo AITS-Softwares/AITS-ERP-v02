@@ -28,15 +28,15 @@ export const teamMembers = [];
 export const savedAddresses = [];
 
 export const accessRoles = [
-  { role: "Owner", scope: "Full distributor access", modules: "Orders, stock, finance, complaints, team" },
-  { role: "Sales operator", scope: "Commercial workflow", modules: "Products, orders, stock request, dispatch view" },
-  { role: "Accounts viewer", scope: "Finance workflow", modules: "Invoices, ledger, payments, credit notes" },
-  { role: "Read only", scope: "View only", modules: "Dashboard, products, notifications" },
+  { role: "Owner", scope: "Full distributor access", modules: "Sales Orders, stock, finance, complaints, team" },
+  { role: "Sales operator", scope: "Commercial workflow", modules: "Items, Sales Orders, Material Request, Delivery Notes" },
+  { role: "Accounts viewer", scope: "Finance workflow", modules: "Sales Invoices, ledger, payments, Credit Notes" },
+  { role: "Read only", scope: "View only", modules: "Dashboard, Items, notifications" },
 ];
 
 export const otpPolicies = [
   { title: "Primary login ID", detail: "Mobile number linked to distributor contact" },
-  { title: "ERPNext mapping", detail: "Recommended mapping is ERPNext Customer with Contact mobile" },
+  { title: "ERPNext mapping", detail: "Recommended mapping is ERPNext Customer with linked Contact mobile" },
   { title: "Fallback identity", detail: "Distributor code for branch or operator selection" },
   { title: "Session rule", detail: "OTP on login, with trusted-device rule later" },
 ];
@@ -75,7 +75,7 @@ export const requestTypeOptions = [
 ];
 
 export const paymentModeOptions = [
-  { value: "credit", label: "Credit against approved limit" },
+  { value: "credit", label: "Credit limit / on account" },
   { value: "bank", label: "Bank transfer / NEFT" },
   { value: "upi", label: "UPI collection" },
 ];
@@ -86,22 +86,26 @@ export const financePaymentModeOptions = [
   { value: "cheque", label: "Cheque" },
 ];
 
+function matchesRecordId(record, id, keys) {
+  return keys.some((key) => String(record?.[key] || "") === String(id || ""));
+}
+
 export function getProductById(id) {
-  return products.find((item) => item.id === id);
+  return products.find((item) => matchesRecordId(item, id, ["itemCode", "id"]));
 }
 
 export function getOrderById(id) {
-  return orders.find((item) => item.id === id);
+  return orders.find((item) => matchesRecordId(item, id, ["documentNumberOrder", "salesNumber", "id"]));
 }
 
 export function getInvoiceById(id) {
-  return invoices.find((item) => item.id === id);
+  return invoices.find((item) => matchesRecordId(item, id, ["invoiceNumber", "id"]));
 }
 
 export function getComplaintById(id) {
-  return complaints.find((item) => item.id === id);
+  return complaints.find((item) => matchesRecordId(item, id, ["complaintNumber", "id"]));
 }
 
 export function getDispatchById(id) {
-  return dispatches.find((item) => item.id === id);
+  return dispatches.find((item) => matchesRecordId(item, id, ["documentNumberDelivery", "deliveryNumber", "id"]));
 }
