@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import DistributorSelect from "@/components/distributor/DistributorSelect";
 
 const roleOptions = ["Owner", "Sales operator", "Accounts viewer", "Read only"];
 
@@ -139,17 +140,12 @@ export default function DistributorUsersAdminPage() {
       <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">Create distributor user</h2>
         <form className="mt-5 grid gap-4 md:grid-cols-2" onSubmit={createUser}>
-          <select value={form.distributorAccountId} onChange={(e) => setForm((s) => ({ ...s, distributorAccountId: e.target.value }))} className="rounded-xl border border-gray-200 px-4 py-3 text-sm">
-            <option value="">Select distributor account</option>
-            {accounts.map((account) => <option key={account.id} value={account.id}>{account.label}</option>)}
-          </select>
+          <DistributorSelect value={form.distributorAccountId} onChange={(value) => setForm((s) => ({ ...s, distributorAccountId: value }))} placeholder="Select distributor account" options={accounts.map((account) => ({ value: account.id, label: account.label }))} />
           <input value={form.fullName} onChange={(e) => setForm((s) => ({ ...s, fullName: e.target.value }))} placeholder="Full name" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
           <input value={form.designation} onChange={(e) => setForm((s) => ({ ...s, designation: e.target.value }))} placeholder="Designation" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
           <input value={form.mobileNumber} onChange={(e) => setForm((s) => ({ ...s, mobileNumber: e.target.value }))} placeholder="10-digit mobile number" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
           <input value={form.emailAddress} onChange={(e) => setForm((s) => ({ ...s, emailAddress: e.target.value }))} placeholder="Email address" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
-          <select value={form.role} onChange={(e) => setForm((s) => ({ ...s, role: e.target.value }))} className="rounded-xl border border-gray-200 px-4 py-3 text-sm">
-            {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-          </select>
+          <DistributorSelect value={form.role} onChange={(value) => setForm((s) => ({ ...s, role: value }))} options={roleOptions} aria-label="User role" />
           <div className="flex items-center gap-6 rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-700">
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.loginEnabled} onChange={(e) => setForm((s) => ({ ...s, loginEnabled: e.target.checked }))} /> Login enabled</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.financeAccess} onChange={(e) => setForm((s) => ({ ...s, financeAccess: e.target.checked }))} /> Finance access</label>
@@ -191,9 +187,7 @@ export default function DistributorUsersAdminPage() {
                     <input value={user.emailAddress || ""} onChange={(e) => setUsers((current) => current.map((row) => row.id === user.id ? { ...row, emailAddress: e.target.value } : row))} placeholder="Email" className="rounded-xl border border-gray-200 px-3 py-2 text-sm" />
                   </td>
                   <td className="px-4 py-3">
-                    <select value={user.role} onChange={(e) => setUsers((current) => current.map((row) => row.id === user.id ? { ...row, role: e.target.value } : row))} className="rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                      {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-                    </select>
+                    <DistributorSelect value={user.role} onChange={(value) => setUsers((current) => current.map((row) => row.id === user.id ? { ...row, role: value } : row))} options={roleOptions} aria-label={`Role for ${user.fullName}`} />
                   </td>
                   <td className="px-4 py-3 text-gray-700">
                     <div className="space-y-2">

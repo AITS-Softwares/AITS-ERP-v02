@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
+  FiBell,
   FiChevronLeft,
   FiMenu,
   FiX,
@@ -22,9 +23,13 @@ export default function DistributorShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [previousPath, setPreviousPath] = useState("");
-  const { loading, data } = useDistributorAppData();
+  const { loading, data, markNotificationRead, markAllNotificationsRead } = useDistributorAppData();
   const profile = data.profile || {};
+  const notifications = data.notifications || [];
+  const latestNotifications = notifications.slice(0, 5);
+  const unreadNotifications = notifications.filter((item) => !item.isRead);
   const source = data.source || null;
   const headerMeta = useMemo(() => getDistributorHeaderMeta(pathname), [pathname]);
   const sourceTone = source?.mode === "erpnext"
@@ -75,6 +80,10 @@ export default function DistributorShell({ children }) {
     }
 
     window.sessionStorage.setItem("distributor-current-path", pathname);
+  }, [pathname]);
+
+  useEffect(() => {
+    setNotificationsOpen(false);
   }, [pathname]);
 
   return (
@@ -173,6 +182,78 @@ export default function DistributorShell({ children }) {
                 </div>
               </div>
             </div>
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setNotificationsOpen((current) => !current)}
+                  className="relative rounded-2xl border border-slate-200 bg-white p-2 text-slate-600 transition hover:bg-slate-50"
+                  aria-label="Open notifications"
+                >
+                  <FiBell size={18} />
+                  {unreadNotifications.length ? (
+                    <span className="absolute -right-1 -top-1 inline-flex min-h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#105B92] px-1 text-[10px] font-semibold text-white">
+                      {Math.min(unreadNotifications.length, 9)}
+                    </span>
+                  ) : null}
+                </button>
+                {notificationsOpen ? (
+                  <div className="absolute right-0 top-12 z-40 w-[320px] rounded-3xl border border-slate-200 bg-white p-4 shadow-2xl sm:w-[360px]">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Recent alerts</p>
+                        <p className="text-xs text-slate-500">Latest invoice, order, dispatch, and offer updates.</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {unreadNotifications.length ? (
+                          <button
+                            type="button"
+                            onClick={markAllNotificationsRead}
+                            className="text-xs font-semibold text-slate-500 transition hover:text-[#105B92]"
+                          >
+                            Mark all as read
+                          </button>
+                        ) : null}
+                        <Link href="/distributor/notifications" className="text-xs font-semibold text-[#105B92]">
+                          View all
+                        </Link>
+                      </div>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      {latestNotifications.length ? latestNotifications.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            markNotificationRead(item.id);
+                            router.push(item.href || "/distributor/notifications");
+                          }}
+                          className={[
+                            "block w-full rounded-2xl border p-3 text-left transition hover:bg-slate-50",
+                            item.isRead
+                              ? "border-slate-200 bg-slate-50/60 opacity-75"
+                              : "border-blue-200 bg-blue-50/70 shadow-sm",
+                          ].join(" ")}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{item.type || "alert"}</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-900">{item.title}</p>
+                            </div>
+                            <span className="text-[11px] font-semibold text-slate-500">{item.time}</span>
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">{item.body}</p>
+                          <p className="mt-2 text-xs font-semibold text-[#105B92]">Open item</p>
+                        </button>
+                      )) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                          No alerts available yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             <div className="hidden items-center gap-3 sm:flex">
               <div className={[
                 "rounded-full px-3 py-1 text-xs font-semibold",
@@ -186,6 +267,7 @@ export default function DistributorShell({ children }) {
                 <p className="text-sm font-semibold text-slate-900">{profile.route || "No territory mapped"}</p>
                 <p className="text-xs text-slate-500">{sourceDetail}</p>
               </div>
+            </div>
             </div>
           </div>
         </header>

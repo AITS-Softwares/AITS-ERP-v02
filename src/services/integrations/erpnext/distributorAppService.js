@@ -188,16 +188,33 @@ function buildProductAndStockData(itemDocs, itemPriceDocs, binDocs, preferredWar
   };
 }
 
-function buildNotificationsFromERP(orders, invoices, dispatches) {
+function buildNotificationsFromERP(orders, invoices, dispatches, offers = []) {
+  const recentInvoices = invoices
+    .slice()
+    .sort((a, b) => b.sortTime - a.sortTime)
+    .slice(0, 3)
+    .map((invoice) => ({
+      id: `erp-invoice-created-${invoice.invoiceNumber}`,
+      type: "invoice",
+      title: `Invoice ${invoice.invoiceNumber} generated`,
+      body: `Sales Invoice created for ${invoice.amount}. Due ${invoice.dueDate}.`,
+      tone: "green",
+      time: invoice.postingDate,
+      href: `/distributor/invoices/${encodeURIComponent(invoice.invoiceNumber)}`,
+      sortTime: invoice.sortTime,
+    }));
+
   const overdue = invoices
     .filter((invoice) => invoice.openBalanceRaw > 0 && invoice.dueDateRaw && invoice.dueDateRaw < Date.now())
     .slice(0, 3)
     .map((invoice) => ({
       id: `erp-invoice-${invoice.invoiceNumber}`,
+      type: "invoice",
       title: `Overdue invoice ${invoice.invoiceNumber}`,
       body: `Outstanding amount ${invoice.remainingAmount} requires follow-up.`,
       tone: "amber",
       time: invoice.dueDate,
+      href: `/distributor/invoices/${encodeURIComponent(invoice.invoiceNumber)}`,
       sortTime: invoice.dueDateRaw,
     }));
 
@@ -206,10 +223,12 @@ function buildNotificationsFromERP(orders, invoices, dispatches) {
     .slice(0, 2)
     .map((order) => ({
       id: `erp-order-${order.documentNumberOrder}`,
+      type: "order",
       title: `Order ${order.documentNumberOrder}`,
       body: `${order.status} with value ${order.grandTotal}.`,
       tone: "blue",
       time: order.postingDate,
+      href: `/distributor/orders/${encodeURIComponent(order.documentNumberOrder)}`,
       sortTime: order.sortTime,
     }));
 
@@ -218,14 +237,29 @@ function buildNotificationsFromERP(orders, invoices, dispatches) {
     .slice(0, 2)
     .map((dispatch) => ({
       id: `erp-dispatch-${dispatch.documentNumberDelivery}`,
+      type: "dispatch",
       title: `Dispatch ${dispatch.documentNumberDelivery}`,
       body: `${dispatch.status} for Sales Order ${dispatch.salesOrder || "-"}.`,
       tone: "green",
       time: dispatch.deliveryDate,
+      href: `/distributor/dispatch/${encodeURIComponent(dispatch.documentNumberDelivery)}`,
       sortTime: dispatch.sortTime,
     }));
 
-  return [...overdue, ...pendingOrders, ...activeDispatches]
+  const offerAnnouncements = offers
+    .slice(0, 2)
+    .map((offer, index) => ({
+      id: `offer-${offer.title}-${index}`,
+      type: "offer",
+      title: offer.title,
+      body: offer.description || "New distributor offer available.",
+      tone: "green",
+      time: offer.validity || "Active",
+      href: "/distributor/offers",
+      sortTime: Date.now() - index,
+    }));
+
+  return [...recentInvoices, ...overdue, ...pendingOrders, ...activeDispatches, ...offerAnnouncements]
     .sort((a, b) => b.sortTime - a.sortTime)
     .map(({ sortTime, ...entry }) => entry);
 }
@@ -531,7 +565,7 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
     .sort((a, b) => b.sortDate - a.sortDate)
     .map(({ sortDate, ...entry }) => entry);
 
-  const notifications = buildNotificationsFromERP(orders, invoices, dispatches);
+  const notifications = buildNotificationsFromERP(orders, invoices, dispatches, localData.offers || []);
   const mergedNotifications = [...notifications, ...(localData.notifications || [])]
     .filter(Boolean)
     .reduce((acc, entry) => {

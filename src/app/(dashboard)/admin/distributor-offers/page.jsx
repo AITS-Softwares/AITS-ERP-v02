@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import DistributorSelect from "@/components/distributor/DistributorSelect";
 
 function StatCard({ label, value, note }) {
   return (
@@ -145,16 +146,8 @@ export default function DistributorOffersAdminPage() {
           <input value={form.itemCode} onChange={(e) => setForm((s) => ({ ...s, itemCode: e.target.value }))} placeholder="Item code (optional)" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
           <input value={form.minQty} onChange={(e) => setForm((s) => ({ ...s, minQty: e.target.value }))} placeholder="Minimum qty" type="number" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
           <input value={form.rateNote} onChange={(e) => setForm((s) => ({ ...s, rateNote: e.target.value }))} placeholder="Rate note" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
-          <select value={form.targetType} onChange={(e) => setForm((s) => ({ ...s, targetType: e.target.value, distributorAccountId: "" }))} className="rounded-xl border border-gray-200 px-4 py-3 text-sm">
-            <option value="all">All distributors</option>
-            <option value="specific">Specific distributor</option>
-          </select>
-          <select value={form.distributorAccountId} onChange={(e) => setForm((s) => ({ ...s, distributorAccountId: e.target.value }))} disabled={form.targetType !== "specific"} className="rounded-xl border border-gray-200 px-4 py-3 text-sm disabled:bg-gray-50">
-            <option value="">Select distributor</option>
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>{account.label}</option>
-            ))}
-          </select>
+          <DistributorSelect value={form.targetType} onChange={(value) => setForm((s) => ({ ...s, targetType: value, distributorAccountId: "" }))} options={[{ value: "all", label: "All distributors" }, { value: "specific", label: "Specific distributor" }]} aria-label="Offer audience" />
+          <DistributorSelect value={form.distributorAccountId} onChange={(value) => setForm((s) => ({ ...s, distributorAccountId: value }))} disabled={form.targetType !== "specific"} placeholder="Select distributor" options={accounts.map((account) => ({ value: account.id, label: account.label }))} />
           <input value={form.bannerUrl} onChange={(e) => setForm((s) => ({ ...s, bannerUrl: e.target.value }))} placeholder="Banner/image URL" className="rounded-xl border border-gray-200 px-4 py-3 text-sm md:col-span-2" />
           <textarea value={form.description} onChange={(e) => setForm((s) => ({ ...s, description: e.target.value }))} placeholder="Offer description, scheme detail, or invoice condition" rows={4} className="rounded-xl border border-gray-200 px-4 py-3 text-sm md:col-span-2" />
           <div className="md:col-span-2 flex items-center justify-between gap-4">

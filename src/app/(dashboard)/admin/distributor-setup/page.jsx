@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import DistributorSelect from "@/components/distributor/DistributorSelect";
 
 function Message({ tone = "info", text }) {
   if (!text) return null;
@@ -200,10 +201,7 @@ export default function DistributorSetupPage() {
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <input value={otpForm.brandName} onChange={(e) => setOtpForm((s) => ({ ...s, brandName: e.target.value }))} placeholder="Brand name" className="rounded-xl border border-gray-200 px-4 py-3 text-sm" />
-          <select value={otpForm.mobile.channel} onChange={(e) => setOtpForm((s) => ({ ...s, mobile: { ...s.mobile, channel: e.target.value } }))} className="rounded-xl border border-gray-200 px-4 py-3 text-sm">
-            <option value="sms">SMS OTP</option>
-            <option value="whatsapp">WhatsApp OTP</option>
-          </select>
+          <DistributorSelect value={otpForm.mobile.channel} onChange={(value) => setOtpForm((s) => ({ ...s, mobile: { ...s.mobile, channel: value } }))} options={[{ value: "sms", label: "SMS OTP" }, { value: "whatsapp", label: "WhatsApp OTP" }]} aria-label="Mobile OTP channel" />
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">

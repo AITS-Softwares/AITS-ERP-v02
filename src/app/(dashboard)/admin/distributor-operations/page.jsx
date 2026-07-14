@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import DistributorSelect from "@/components/distributor/DistributorSelect";
 
 const statusOptions = {
   complaint: ["Open", "Under Review", "Resolved"],
@@ -69,15 +70,7 @@ function TableSection({ title, rows, onStatusChange, savingKey }) {
                   <td className="px-4 py-3 text-gray-700">{row.summary}</td>
                   <td className="px-4 py-3">
                     <div className="space-y-2">
-                      <select
-                        value={row.status}
-                        onChange={(e) => onStatusChange(row.type, row.number, { status: e.target.value })}
-                        className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700"
-                      >
-                        {(statusOptions[row.type] || [row.status]).map((option) => (
-                          <option key={option} value={option}>{option}</option>
-                        ))}
-                      </select>
+                      <DistributorSelect value={row.status} onChange={(value) => onStatusChange(row.type, row.number, { status: value })} options={statusOptions[row.type] || [row.status]} aria-label={`Workflow status for ${row.number}`} />
                       {row.type === "complaint" ? (
                         <input
                           value={row.linkedCreditNoteNumber || ""}

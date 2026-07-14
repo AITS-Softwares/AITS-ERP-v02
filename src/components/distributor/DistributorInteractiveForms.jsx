@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import DistributorSelect from "@/components/distributor/DistributorSelect";
 import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 import {
   accessRoles,
@@ -33,17 +34,12 @@ function SelectField({ label, value, onChange, options }) {
   return (
     <label className="block space-y-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
-      <select
+      <DistributorSelect
         value={value}
-        onChange={onChange}
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#105B92] focus:ring-2 focus:ring-blue-100"
-      >
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+        onChange={(nextValue) => onChange({ target: { value: nextValue } })}
+        options={options}
+        aria-label={label}
+      />
     </label>
   );
 }

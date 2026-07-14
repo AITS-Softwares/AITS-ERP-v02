@@ -35,7 +35,44 @@ const DistributorDataContext = createContext({
   loading: true,
   data: defaultData,
   refresh: async () => {},
+  markNotificationRead: () => {},
+  markAllNotificationsRead: () => {},
 });
+
+const NOTIFICATION_READS_KEY = "distributor-notification-reads";
+
+function getStoredReadNotificationIds() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const raw = window.localStorage.getItem(NOTIFICATION_READS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeReadNotificationIds(ids) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(NOTIFICATION_READS_KEY, JSON.stringify([...new Set(ids.filter(Boolean))]));
+  } catch {
+    // Ignore storage failures and keep the UI usable.
+  }
+}
+
+function applyNotificationReadState(payload) {
+  const readIds = new Set(getStoredReadNotificationIds());
+  return {
+    ...payload,
+    notifications: (payload.notifications || []).map((item) => ({
+      ...item,
+      isRead: readIds.has(item.id),
+    })),
+  };
+}
 
 export function DistributorDataProvider({ children }) {
   const pathname = usePathname();
@@ -66,7 +103,7 @@ export function DistributorDataProvider({ children }) {
         return;
       }
       if (!res.ok) throw new Error(payload.message || "Failed to load distributor data");
-      setData(payload.data || defaultData);
+      setData(applyNotificationReadState(payload.data || defaultData));
     } catch (error) {
       console.error("Distributor app data client error:", error);
       setData(defaultData);
@@ -80,7 +117,37 @@ export function DistributorDataProvider({ children }) {
     refresh();
   }, [pathname]);
 
-  const value = useMemo(() => ({ loading, data, refresh }), [loading, data]);
+  function markNotificationRead(notificationId) {
+    if (!notificationId) return;
+
+    const nextReadIds = [...new Set([...getStoredReadNotificationIds(), notificationId])];
+    storeReadNotificationIds(nextReadIds);
+
+    setData((current) => ({
+      ...current,
+      notifications: (current.notifications || []).map((item) =>
+        item.id === notificationId ? { ...item, isRead: true } : item
+      ),
+    }));
+  }
+
+  function markAllNotificationsRead() {
+    const allIds = (data.notifications || []).map((item) => item.id).filter(Boolean);
+    if (!allIds.length) return;
+
+    const nextReadIds = [...new Set([...getStoredReadNotificationIds(), ...allIds])];
+    storeReadNotificationIds(nextReadIds);
+
+    setData((current) => ({
+      ...current,
+      notifications: (current.notifications || []).map((item) => ({ ...item, isRead: true })),
+    }));
+  }
+
+  const value = useMemo(
+    () => ({ loading, data, refresh, markNotificationRead, markAllNotificationsRead }),
+    [loading, data]
+  );
 
   return <DistributorDataContext.Provider value={value}>{children}</DistributorDataContext.Provider>;
 }
