@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import dbConnect from "@/lib/db";
 import PurchaseInvoice from "@/models/InvoiceModel";
 import { getTokenFromHeader, verifyJWT } from "@/lib/auth";
-import { autoPaymentEntry } from "@/lib/autoTransaction"; // you'll create this
+import { autoPaymentPaid } from "@/lib/autoTransaction";
 
 export async function POST(req) {
   await dbConnect();
@@ -72,7 +72,7 @@ export async function POST(req) {
 
     // Auto accounting entry (if needed)
     try {
-      await autoPaymentEntry({
+      await autoPaymentPaid({
         companyId: decoded.companyId,
         amount,
         partyId: invoice.supplier,
