@@ -10,12 +10,10 @@ import {
   dispatchIssueOptions,
   financePaymentModeOptions,
   otpPolicies,
-  paymentModeOptions,
-  requestTypeOptions,
 } from "@/components/distributor/mockData";
 import { Badge, StatePanel } from "@/components/distributor/DistributorUI";
 
-function InputField({ label, value, onChange, placeholder, type = "text" }) {
+function InputField({ label, value, onChange, placeholder, type = "text", ...inputProps }) {
   return (
     <label className="block space-y-2">
       <span className="text-sm font-medium text-slate-700">{label}</span>
@@ -24,6 +22,7 @@ function InputField({ label, value, onChange, placeholder, type = "text" }) {
         value={value}
         onChange={onChange}
         placeholder={placeholder}
+        {...inputProps}
         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-[#105B92] focus:ring-2 focus:ring-blue-100"
       />
     </label>
@@ -169,17 +168,6 @@ function useDistributorDraftState(key, initialValue) {
 function clearDistributorDraftState(keys) {
   if (typeof window === "undefined") return;
   keys.forEach((key) => window.localStorage.removeItem(key));
-}
-
-function buildCheckoutDraftLines(products) {
-  return products.slice(0, 3).map((line, index) => ({
-    id: getRecordValue(line, ["itemCode", "id"], index + 1),
-    itemCode: getRecordValue(line, ["itemCode", "id"]),
-    itemName: getRecordValue(line, ["itemName", "name"], "Item pending"),
-    qty: 1,
-    rate: toAmount(getRecordValue(line, ["standardRate", "unitPrice", "rate"], 0)),
-    uom: getRecordValue(line, ["uom", "stockUom"], "Nos"),
-  }));
 }
 
 export function DistributorOtpPreview() {
@@ -350,27 +338,27 @@ export function DistributorOtpPreview() {
 export function CheckoutWorkbench() {
   const { data, refresh } = useDistributorAppData();
   const savedAddresses = data.savedAddresses || [];
-  const products = data.products || [];
   const checkoutDraftKeys = [
     "distributor-draft-checkout-delivery-date",
-    "distributor-draft-checkout-slot",
     "distributor-draft-checkout-ship-to",
     "distributor-draft-checkout-po-reference",
     "distributor-draft-checkout-remarks",
-    "distributor-draft-checkout-payment-mode",
-    "distributor-draft-checkout-utr",
     "distributor-draft-checkout-lines",
   ];
   const [deliveryDate, setDeliveryDate] = useDistributorDraftState("distributor-draft-checkout-delivery-date", "");
-  const [slot, setSlot] = useDistributorDraftState("distributor-draft-checkout-slot", "afternoon");
   const [shipTo, setShipTo] = useDistributorDraftState("distributor-draft-checkout-ship-to", savedAddresses[0]?.label || "");
   const [poReference, setPoReference] = useDistributorDraftState("distributor-draft-checkout-po-reference", "");
   const [instructions, setInstructions] = useDistributorDraftState("distributor-draft-checkout-remarks", "");
-  const [paymentMode, setPaymentMode] = useDistributorDraftState("distributor-draft-checkout-payment-mode", "credit");
-  const [utr, setUtr] = useDistributorDraftState("distributor-draft-checkout-utr", "");
   const [saveStatus, setSaveStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [lines, setLines] = useDistributorDraftState("distributor-draft-checkout-lines", () => buildCheckoutDraftLines(products));
+  const [lines, setLines] = useDistributorDraftState("distributor-draft-checkout-lines", []);
+  const [itemSearch, setItemSearch] = useState("");
+  const [catalogueItems, setCatalogueItems] = useState([]);
+  const [catalogueLoading, setCatalogueLoading] = useState(false);
+  const [pricingPreview, setPricingPreview] = useState(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingMessage, setPricingMessage] = useState("");
+  const minimumDeliveryDate = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     if (!shipTo && savedAddresses[0]?.label) {
@@ -379,22 +367,79 @@ export function CheckoutWorkbench() {
   }, [savedAddresses, shipTo]);
 
   useEffect(() => {
-    if (!lines.length && products.length) {
-      setLines(buildCheckoutDraftLines(products));
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setCatalogueLoading(true);
+      try {
+        const response = await fetch(`/api/distributor/order-items?${new URLSearchParams({ page: "1", pageSize: "10", search: itemSearch })}`, { headers: { Authorization: `Bearer ${getDistributorToken()}` }, signal: controller.signal });
+        const payload = await response.json().catch(() => ({}));
+        if (response.ok) setCatalogueItems(payload.data?.items || []);
+      } finally { if (!controller.signal.aborted) setCatalogueLoading(false); }
+    }, itemSearch ? 250 : 0);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [itemSearch]);
+
+  useEffect(() => {
+    if (!lines.length) {
+      setPricingPreview(null);
+      setPricingMessage("");
+      setPricingLoading(false);
+      return undefined;
     }
-  }, [lines.length, products]);
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setPricingLoading(true);
+      try {
+        const response = await fetch("/api/distributor/pricing/preview", {
+          method: "POST",
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${getDistributorToken()}` },
+          body: JSON.stringify({ deliveryDate, lines }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || "ERPNext pricing preview failed");
+        if (!controller.signal.aborted) {
+          setPricingPreview(payload.data || null);
+          setPricingMessage(payload.data?.mode === "basic" ? "Base ERPNext item rates applied. Cart-level discounts, taxes, and schemes require the authoritative ERPNext pricing endpoint." : "Live ERPNext pricing applied to this cart.");
+        }
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setPricingPreview(null);
+          setPricingMessage(error.message || "ERPNext pricing preview is unavailable.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setPricingLoading(false);
+      }
+    }, 350);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [deliveryDate, lines]);
 
   const totals = useMemo(() => {
-    const subtotal = lines.reduce((sum, line) => sum + line.qty * line.rate, 0);
-    const discount = Math.round(subtotal * 0.03);
-    const tax = Math.round((subtotal - discount) * 0.18);
+    const baseTotal = lines.reduce((sum, line) => sum + line.qty * line.rate, 0);
     return {
-      subtotal,
-      discount,
-      tax,
-      grand: subtotal - discount + tax,
+      subtotal: pricingPreview ? pricingPreview.netTotal : baseTotal,
+      tax: pricingPreview ? pricingPreview.totalTaxesAndCharges : 0,
+      grandTotal: pricingPreview ? pricingPreview.grandTotal : baseTotal,
     };
-  }, [lines]);
+  }, [lines, pricingPreview]);
+
+  const pricingByItemCode = useMemo(
+    () => new Map((pricingPreview?.items || []).map((item) => [item.itemCode, item])),
+    [pricingPreview]
+  );
+
+  const unpricedLines = useMemo(() => {
+    if (!pricingPreview || pricingLoading) return [];
+    return lines.filter((line) => {
+      const priced = pricingByItemCode.get(line.itemCode);
+      return !priced || Number(priced.priceListRate) <= 0;
+    });
+  }, [lines, pricingByItemCode, pricingPreview, pricingLoading]);
+
+  const unpricedKey = unpricedLines.map((line) => line.itemCode).sort().join("|");
+  const [dismissedUnpricedKey, setDismissedUnpricedKey] = useState("");
+  const showUnpricedModal = Boolean(unpricedKey) && unpricedKey !== dismissedUnpricedKey;
 
   function updateQty(id, delta) {
     setLines((current) =>
@@ -403,27 +448,62 @@ export function CheckoutWorkbench() {
       )
     );
   }
+  function addItem(product) {
+    setLines((current) => current.some((line) => line.itemCode === product.itemCode) ? current : [...current, { id: product.itemCode, itemCode: product.itemCode, itemName: product.itemName, uom: product.stockUom || "Nos", qty: 1, rate: Number(product.rate || 0) }]);
+    setItemSearch("");
+  }
+  function removeItem(id) { setLines((current) => current.filter((line) => line.id !== id)); }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <>
+    {showUnpricedModal ? (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
+        <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-600">Price list not available</p>
+          <h3 className="mt-2 text-lg font-semibold text-slate-900">
+            {unpricedLines.length === 1 ? "This item has" : `${unpricedLines.length} items have`} no ERPNext price list entry
+          </h3>
+          <div className="mt-3 space-y-2">
+            {unpricedLines.map((line) => (
+              <div key={line.itemCode} className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                {line.itemName} <span className="text-slate-400">({line.itemCode})</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-sm text-slate-500">
+            ERPNext cannot price {unpricedLines.length === 1 ? "this item" : "these items"} yet. Remove {unpricedLines.length === 1 ? "it" : "them"} from the order or ask your admin to add an Item Price before placing this order.
+          </p>
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                unpricedLines.forEach((line) => removeItem(line.id));
+                setDismissedUnpricedKey("");
+              }}
+              className="rounded-2xl border border-rose-200 px-4 py-2 text-sm font-semibold text-rose-600"
+            >
+              Remove item(s)
+            </button>
+            <button
+              type="button"
+              onClick={() => setDismissedUnpricedKey(unpricedKey)}
+              className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Keep and continue
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    <div className="grid max-w-full gap-6 overflow-x-hidden xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="min-w-0 space-y-6">
+        <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-slate-900">Sales Order details</h2>
             <p className="mt-1 text-sm text-slate-500">ERPNext-aligned distributor order fields for schedule date, address, reference, and remarks.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <InputField label="Requested delivery date" type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
-            <SelectField
-              label="Delivery window"
-              value={slot}
-              onChange={(e) => setSlot(e.target.value)}
-              options={[
-                { value: "morning", label: "Morning route" },
-                { value: "afternoon", label: "Afternoon route" },
-                { value: "evening", label: "Evening route" },
-              ]}
-            />
+            <InputField label="Requested delivery date" type="date" value={deliveryDate} min={minimumDeliveryDate} required onChange={(e) => setDeliveryDate(e.target.value)} />
             <SelectField
               label="Ship to address"
               value={shipTo}
@@ -437,23 +517,27 @@ export function CheckoutWorkbench() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-5">
             <h2 className="text-lg font-semibold text-slate-900">Sales Order items</h2>
-            <p className="mt-1 text-sm text-slate-500">ERPNext-ready item rows with item code, quantity, UOM, and rate fields.</p>
+            <p className="mt-1 text-sm text-slate-500">Search the ERPNext catalogue, add required items, then review the compact order list. Customer-specific prices, discounts, taxes, and schemes are calculated by ERPNext.</p>
           </div>
+          <div className="mb-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3"><input value={itemSearch} onChange={(event) => setItemSearch(event.target.value)} placeholder="Search item code or item name" className="w-full min-w-0 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm" />{catalogueLoading ? <p className="px-2 pt-2 text-xs text-slate-500">Searching catalogue...</p> : null}{itemSearch || catalogueItems.length ? <div className="mt-2 max-h-56 divide-y divide-slate-100 overflow-y-auto rounded-xl bg-white">{catalogueItems.map((product) => <button type="button" key={product.itemCode} onClick={() => addItem(product)} className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 text-left hover:bg-blue-50"><span className="min-w-0"><span className="block truncate text-sm font-semibold text-slate-900">{product.itemName}</span><span className="block truncate text-xs text-slate-500">{product.itemCode} · {product.stockUom || "UOM pending"}</span></span><span className="shrink-0 text-right text-xs font-semibold text-[#105B92]">{product.rate === null ? "Rate on ERPNext" : formatCurrency(product.rate)}<span className="block font-normal">Add</span></span></button>)}</div> : null}</div>
           <div className="space-y-4">
-            {lines.map((line) => (
-              <div key={line.id} className="grid gap-4 rounded-2xl border border-slate-200 p-4 sm:grid-cols-[1.3fr_0.9fr_0.8fr]">
-                <div>
-                  <p className="font-semibold text-slate-900">{line.itemName}</p>
-                  <p className="mt-1 text-sm text-slate-500">{line.itemCode || "Item code pending"} | {line.uom}</p>
+            {!lines.length ? <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-center text-sm text-slate-500">Search and add one or more items to begin.</p> : null}
+            {lines.map((line) => {
+              const pricedLine = pricingByItemCode.get(line.itemCode);
+              return (
+              <div key={line.id} className="grid min-w-0 gap-3 rounded-2xl border border-slate-200 p-3 sm:grid-cols-[minmax(0,1.3fr)_0.9fr_0.8fr_auto] sm:items-center sm:p-4">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-slate-900">{line.itemName}</p>
+                  <p className="truncate text-sm text-slate-500">{line.itemCode || "Item code pending"} | {line.uom}</p>
                 </div>
-                <div className="flex items-center justify-start gap-2">
+                <div className="flex items-center gap-2">
                   <button type="button" onClick={() => updateQty(line.id, -1)} className="h-10 w-10 rounded-full border border-slate-200 text-lg text-slate-700">
                     -
                   </button>
-                  <div className="min-w-[72px] rounded-2xl bg-slate-50 px-4 py-2 text-center text-sm font-semibold text-slate-800">
+                  <div className="min-w-12 rounded-2xl bg-slate-50 px-3 py-2 text-center text-sm font-semibold text-slate-800">
                     {line.qty}
                   </div>
                   <button type="button" onClick={() => updateQty(line.id, 1)} className="h-10 w-10 rounded-full border border-slate-200 text-lg text-slate-700">
@@ -461,34 +545,32 @@ export function CheckoutWorkbench() {
                   </button>
                 </div>
                 <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-900">
-                  {formatCurrency(line.qty * line.rate)}
+                  {pricedLine ? formatCurrency(pricedLine.amount) : line.rate ? formatCurrency(line.qty * line.rate) : "ERPNext price"}
+                  {pricedLine?.discountPercentage ? <span className="mt-1 block text-xs font-medium text-emerald-700">{pricedLine.discountPercentage}% ERPNext discount</span> : null}
                 </div>
+                <button type="button" onClick={() => removeItem(line.id)} className="justify-self-start text-sm font-semibold text-rose-600 sm:justify-self-auto">Remove</button>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="min-w-0 space-y-6">
+        <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="mb-5">
-            <h2 className="text-lg font-semibold text-slate-900">Net total and payment</h2>
-            <p className="mt-1 text-sm text-slate-500">Review net total, taxes, and payment collection mode before saving the Sales Order.</p>
+            <h2 className="text-lg font-semibold text-slate-900">Order total</h2>
+            <p className="mt-1 text-sm text-slate-500">This preview is calculated by ERPNext for the mapped distributor customer. ERPNext recalculates once more when the order is created.</p>
           </div>
           <div className="space-y-3">
-            <StatePanel tone="slate" title={`Net total: ${formatCurrency(totals.subtotal)}`} description={`Discount / scheme: ${formatCurrency(totals.discount)}`} />
-            <StatePanel tone="slate" title={`GST / taxes: ${formatCurrency(totals.tax)}`} description={`Grand total: ${formatCurrency(totals.grand)}`} />
+            <StatePanel
+              tone={pricingPreview ? "blue" : "slate"}
+              title={pricingLoading ? "Updating ERPNext pricing..." : `Order total: ${formatCurrency(totals.grandTotal)}`}
+              description={pricingPreview ? `${pricingPreview.mode === "basic" ? "Base item-rate preview" : "Authoritative ERPNext preview"} | Items ${formatCurrency(totals.subtotal)} | Taxes ${formatCurrency(totals.tax)}${pricingPreview.sellingPriceList ? ` | ${pricingPreview.sellingPriceList}` : ""}` : "No price preview is available yet."}
+            />
+            {pricingMessage ? <p className={`text-xs ${pricingPreview ? "text-emerald-700" : "text-amber-700"}`}>{pricingMessage}</p> : null}
           </div>
           <div className="mt-4 space-y-4">
-            <SelectField
-              label="Payment collection mode"
-              value={paymentMode}
-              onChange={(e) => setPaymentMode(e.target.value)}
-              options={paymentModeOptions}
-            />
-            {paymentMode !== "credit" ? (
-              <InputField label="UTR / reference number" value={utr} onChange={(e) => setUtr(e.target.value)} placeholder="Enter payment reference" />
-            ) : null}
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
@@ -499,27 +581,27 @@ export function CheckoutWorkbench() {
               </button>
               <button
                 type="button"
+                disabled={submitting || !deliveryDate || !lines.length}
                 onClick={async () => {
                   try {
                     setSubmitting(true);
+                    if (lines.length && !pricingPreview) {
+                      // A failed preview never supplies a client rate. The Sales Order API still asks ERPNext to calculate prices authoritatively.
+                      setSaveStatus("Live price preview is unavailable. ERPNext will calculate the final price when the order is created.");
+                    }
                     const result = await submitDistributorAction("/api/distributor/orders", {
                       deliveryDate,
                       shipTo,
                       poReference,
                       remarks: instructions,
-                      paymentMode,
-                      paymentReference: utr,
                       lines,
                     });
                     clearDistributorDraftState(checkoutDraftKeys);
                     setDeliveryDate("");
-                    setSlot("afternoon");
                     setShipTo(savedAddresses[0]?.label || "");
                     setPoReference("");
                     setInstructions("");
-                    setPaymentMode("credit");
-                    setUtr("");
-                    setLines(buildCheckoutDraftLines(products));
+                    setLines([]);
                     setSaveStatus(result.message || "Sales Order created successfully.");
                     await refresh();
                   } catch (error) {
@@ -528,7 +610,7 @@ export function CheckoutWorkbench() {
                     setSubmitting(false);
                   }
                 }}
-                className="rounded-2xl bg-[#105B92] px-4 py-3 text-sm font-semibold text-white"
+                className="rounded-2xl bg-[#105B92] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {submitting ? "Submitting..." : "Place order"}
               </button>
@@ -538,27 +620,23 @@ export function CheckoutWorkbench() {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
 export function StockRequestWorkbench() {
   const { data, refresh } = useDistributorAppData();
   const products = data.products || [];
-  const stockItems = data.stockItems || [];
   const stockDraftKeys = [
     "distributor-draft-stock-item",
     "distributor-draft-stock-qty",
     "distributor-draft-stock-need-by",
-    "distributor-draft-stock-warehouse",
-    "distributor-draft-stock-purpose",
     "distributor-draft-stock-remarks",
     "distributor-draft-stock-notify-sales",
   ];
   const [item, setItem] = useDistributorDraftState("distributor-draft-stock-item", products[0]?.itemCode || products[0]?.id || "");
   const [qty, setQty] = useDistributorDraftState("distributor-draft-stock-qty", "");
   const [needBy, setNeedBy] = useDistributorDraftState("distributor-draft-stock-need-by", "");
-  const [warehouse, setWarehouse] = useDistributorDraftState("distributor-draft-stock-warehouse", stockItems[0]?.warehouseCode || stockItems[0]?.warehouse || "");
-  const [requestType, setRequestType] = useDistributorDraftState("distributor-draft-stock-purpose", "urgent-replenishment");
   const [reason, setReason] = useDistributorDraftState("distributor-draft-stock-remarks", "");
   const [notifySales, setNotifySales] = useDistributorDraftState("distributor-draft-stock-notify-sales", true);
   const [status, setStatus] = useState("");
@@ -568,17 +646,14 @@ export function StockRequestWorkbench() {
     if (!item && products[0]?.itemCode) {
       setItem(products[0].itemCode);
     }
-    if (!warehouse && (stockItems[0]?.warehouseCode || stockItems[0]?.warehouse)) {
-      setWarehouse(stockItems[0]?.warehouseCode || stockItems[0]?.warehouse || "");
-    }
-  }, [item, warehouse, products, stockItems]);
+  }, [item, products]);
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_0.8fr]">
       <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5">
           <h2 className="text-lg font-semibold text-slate-900">Material Request details</h2>
-          <p className="mt-1 text-sm text-slate-500">ERPNext-aligned stock request fields for item code, quantity, schedule date, warehouse, and remarks.</p>
+          <p className="mt-1 text-sm text-slate-500">Submit an ERPNext-aligned stock request with the item, quantity, required date, and remarks.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <SelectField
@@ -589,18 +664,6 @@ export function StockRequestWorkbench() {
           />
           <InputField label="Qty" value={qty} onChange={(e) => setQty(e.target.value)} placeholder="24" type="number" />
           <InputField label="Schedule date" type="date" value={needBy} onChange={(e) => setNeedBy(e.target.value)} />
-          <SelectField
-            label="Warehouse"
-            value={warehouse}
-            onChange={(e) => setWarehouse(e.target.value)}
-            options={stockItems.length ? stockItems.map((stock) => ({ value: stock.warehouseCode || stock.warehouse, label: stock.warehouseCode || stock.warehouse })) : [{ value: "", label: "No warehouse data connected yet" }]}
-          />
-          <SelectField
-            label="Purpose"
-            value={requestType}
-            onChange={(e) => setRequestType(e.target.value)}
-            options={requestTypeOptions}
-          />
         </div>
         <div className="mt-4 space-y-4">
           <TextAreaField label="Remarks" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Explain why stock is needed and what triggered the request." rows={4} />
@@ -616,8 +679,6 @@ export function StockRequestWorkbench() {
                   itemName: selectedProduct?.itemName || "",
                   quantity: Number(qty || 0),
                   scheduleDate: needBy,
-                  warehouseCode: warehouse,
-                  purpose: requestType,
                   remarks: reason,
                   notifySales,
                 });
@@ -625,8 +686,6 @@ export function StockRequestWorkbench() {
                 setItem(products[0]?.itemCode || products[0]?.id || "");
                 setQty("");
                 setNeedBy("");
-                setWarehouse(stockItems[0]?.warehouseCode || stockItems[0]?.warehouse || "");
-                setRequestType("urgent-replenishment");
                 setReason("");
                 setNotifySales(true);
                 setStatus(result.message || "Material Request submitted successfully.");
@@ -645,17 +704,6 @@ export function StockRequestWorkbench() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-slate-900">Workflow notes</h2>
-          <p className="mt-1 text-sm text-slate-500">Operational checkpoints linked to stock request handling.</p>
-        </div>
-        <div className="space-y-3">
-          <StatePanel tone="amber" title="Low stock alert" description="Trigger when available stock falls below distributor-specific threshold or reorder level." />
-          <StatePanel tone="blue" title="Request notification" description="Trigger mail and ERPNext notification when the Material Request is submitted or approved." />
-          <StatePanel tone="slate" title="Audit trail" description="Keep request type, remarks, and linked warehouse visible for review." />
-        </div>
-      </div>
     </div>
   );
 }
@@ -952,16 +1000,6 @@ export function ComplaintFormWorkbench() {
         </div>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-slate-900">Submission guidance</h2>
-          <p className="mt-1 text-sm text-slate-500">Useful support hints for faster resolution.</p>
-        </div>
-        <div className="space-y-3">
-          <StatePanel tone="slate" title="Expected proof" description="Invoice copy, rate screenshot, delivery proof, or received quantity note." />
-          <StatePanel tone="amber" title="Resolution routing" description="Rate and misbill issues go to accounts. Qty issues go to claims, Delivery Note review, and Credit Note follow-up." />
-        </div>
-      </div>
     </div>
   );
 }

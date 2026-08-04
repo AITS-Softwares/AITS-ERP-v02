@@ -1,98 +1,58 @@
 export const runtime = "nodejs";
 
-import { jsPDF } from "jspdf";
 import { NextResponse } from "next/server";
 import { getDistributorSession, unauthorizedDistributorResponse } from "@/lib/distributorSession";
-import SalesInvoice from "@/models/SalesInvoice";
-import { buildDistributorAppData } from "@/services/distributor/buildDistributorAppData";
-import { buildDistributorConnectedAppData } from "@/services/integrations/erpnext/distributorAppService";
+import { resolveERPNextDistributorContext } from "@/services/integrations/erpnext/distributorIdentityService";
+import { erpnextRequestWithConfig } from "@/services/integrations/erpnext/erpnextClient";
 
-function cleanText(value) {
-  return String(value || "").trim();
-}
+function text(value) { return String(value || "").trim(); }
 
 export async function GET(req, { params }) {
   try {
     const session = await getDistributorSession(req);
     if (!session) return unauthorizedDistributorResponse();
+    const { id } = await params;
+    const invoiceId = text(id);
+    if (!invoiceId) return NextResponse.json({ success: false, message: "Invoice number is required" }, { status: 400 });
 
-    const invoiceId = cleanText(params?.id);
-    if (!invoiceId) {
-      return NextResponse.json({ success: false, message: "Invoice number is required" }, { status: 400 });
-    }
+    const context = await resolveERPNextDistributorContext(session);
+    if (!context?.config || !context.customer?.name) return NextResponse.json({ success: false, message: "ERPNext customer mapping is required to download this invoice" }, { status: 400 });
 
-    const baseData = await buildDistributorAppData(session);
-    const data = await buildDistributorConnectedAppData(session, { baseData }).catch(() => baseData);
-    const invoice = (data.invoices || []).find((item) => cleanText(item.invoiceNumber || item.id) === invoiceId);
-
-    if (!invoice) {
+    const invoiceResponse = await erpnextRequestWithConfig(context.config, `/api/resource/Sales%20Invoice/${encodeURIComponent(invoiceId)}`, { method: "GET" });
+    const invoice = invoiceResponse?.data;
+    if (!invoice || ![text(context.customer.name), text(context.customer.customer_name)].includes(text(invoice.customer))) {
       return NextResponse.json({ success: false, message: "Invoice not found for this distributor" }, { status: 404 });
     }
 
-    const customerId = session.customer?._id || null;
-    const customerCode = cleanText(session.customer?.customerCode);
-    const localInvoice = await SalesInvoice.findOne({
-      companyId: session.companyId,
-      invoiceNumber: invoiceId,
-      ...(customerId || customerCode
-        ? {
-            $or: [
-              ...(customerId ? [{ customer: customerId }] : []),
-              ...(customerCode ? [{ customerCode }] : []),
-            ],
-          }
-        : {}),
-    }).lean();
-
-    const doc = new jsPDF();
-    let y = 18;
-    const move = (gap = 8) => {
-      y += gap;
-      return y;
-    };
-
-    doc.setFontSize(18);
-    doc.text("Distributor Invoice Summary", 14, y);
-    doc.setFontSize(11);
-    doc.text(`Invoice: ${invoice.invoiceNumber || invoice.id}`, 14, move());
-    doc.text(`Customer: ${session.customer?.customerName || session.account?.displayName || "-"}`, 14, move(7));
-    doc.text(`Posting Date: ${invoice.postingDate || "-"}`, 14, move(7));
-    doc.text(`Due Date: ${invoice.dueDate || "-"}`, 14, move(7));
-    doc.text(`Status: ${invoice.paymentStatus || invoice.status || "-"}`, 14, move(7));
-    doc.text(`Grand Total: ${invoice.grandTotal || invoice.amount || "-"}`, 14, move(7));
-    doc.text(`Outstanding: ${invoice.remainingAmount || invoice.balance || "-"}`, 14, move(7));
-    doc.text(`Reference: ${invoice.salesOrder || invoice.orderId || "-"}`, 14, move(7));
-
-    if (cleanText(invoice.remarks || localInvoice?.remarks)) {
-      doc.text(`Remarks: ${cleanText(invoice.remarks || localInvoice?.remarks)}`, 14, move(10));
-    }
-
-    const items = Array.isArray(localInvoice?.items) ? localInvoice.items : [];
-    if (items.length) {
-      move(12);
-      doc.setFontSize(13);
-      doc.text("Items", 14, y);
-      doc.setFontSize(10);
-
-      items.slice(0, 12).forEach((item) => {
-        move(7);
-        doc.text(
-          `${cleanText(item.itemCode)} | ${cleanText(item.itemName)} | Qty ${item.quantity || 0} | ${Number(item.totalAmount || 0).toLocaleString("en-IN")}`,
-          14,
-          y
-        );
+    // Ask ERPNext which format is configured as the DocType default, then pass
+    // it explicitly. Omitting `format` can produce an empty response on some
+    // ERPNext/Frappe versions.
+    const doctypeResponse = await erpnextRequestWithConfig(context.config, "/api/resource/DocType/Sales%20Invoice", { method: "GET" }).catch(() => null);
+    const printFormat = text(doctypeResponse?.data?.default_print_format) || "Standard";
+    const query = new URLSearchParams({ doctype: "Sales Invoice", name: invoiceId, format: printFormat, no_letterhead: "0" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), context.config.timeoutMs || 15000);
+    let response;
+    try {
+      response = await fetch(`${context.config.baseUrl}/api/method/frappe.utils.print_format.download_pdf?${query}`, {
+        method: "GET",
+        signal: controller.signal,
+        headers: { Authorization: `token ${context.config.apiKey}:${context.config.apiSecret}` },
       });
+    } finally { clearTimeout(timeout); }
+    if (!response.ok) {
+      const detail = await response.text().catch(() => "");
+      return NextResponse.json({ success: false, message: `ERPNext could not generate the invoice PDF${detail ? `: ${detail.replace(/<[^>]+>/g, "").slice(0, 160)}` : ""}` }, { status: response.status || 502 });
     }
-
-    const pdf = doc.output("arraybuffer");
-    return new NextResponse(Buffer.from(pdf), {
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename=${invoiceId}.pdf`,
-      },
-    });
+    const pdf = await response.arrayBuffer();
+    const bytes = new Uint8Array(pdf);
+    const isPdf = bytes.length > 4 && String.fromCharCode(...bytes.slice(0, 4)) === "%PDF";
+    if (!isPdf) {
+      const body = new TextDecoder().decode(bytes.slice(0, 240)).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      return NextResponse.json({ success: false, message: body ? `ERPNext did not return a PDF: ${body}` : "ERPNext returned an empty print response." }, { status: 502 });
+    }
+    return new NextResponse(pdf, { headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename=${invoiceId}.pdf`, "Cache-Control": "private, no-store" } });
   } catch (error) {
-    console.error("Distributor invoice download error:", error);
-    return NextResponse.json({ success: false, message: "Failed to download invoice document" }, { status: 500 });
+    return NextResponse.json({ success: false, message: error.name === "AbortError" ? "ERPNext PDF generation timed out" : error.message || "Failed to download ERPNext invoice PDF" }, { status: 500 });
   }
 }

@@ -57,12 +57,12 @@ export const quickActions = [
 export const complaintTypeOptions = [
   { value: "Rate Issue", label: "Rate Issue" },
   { value: "Short Quantity", label: "Short Quantity" },
-  { value: "Misbilling", label: "Misbilling" },
+  { value: "Wrong Billing", label: "Wrong Billing" },
   { value: "Others", label: "Others" },
 ];
 
 export const dispatchIssueOptions = [
-  { value: "misbill", label: "Misbill" },
+  { value: "wrong-billing", label: "Wrong Billing" },
   { value: "rate-issue", label: "Rate issue" },
   { value: "qty-issue", label: "Qty issue" },
   { value: "others", label: "Others" },

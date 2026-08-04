@@ -2,16 +2,20 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import DistributorAppUser from "@/models/DistributorAppUser";
 import { normalizeEmailAddress, normalizeMobileNumber } from "@/lib/distributorAuth";
+import { getDistributorSession, unauthorizedDistributorResponse } from "@/lib/distributorSession";
+
+function canManageAccess(session) {
+  return session?.user?.role === "Owner";
+}
 
 export async function GET(req) {
   try {
-    const distributorAccountId = req.nextUrl.searchParams.get("distributorAccountId");
-    if (!distributorAccountId) {
-      return NextResponse.json({ success: true, users: [] });
-    }
+    const session = await getDistributorSession(req);
+    if (!session) return unauthorizedDistributorResponse();
+    if (!canManageAccess(session)) return NextResponse.json({ success: false, message: "Only the distributor Owner can view team access" }, { status: 403 });
 
     await dbConnect();
-    const users = await DistributorAppUser.find({ distributorAccountId }).select(
+    const users = await DistributorAppUser.find({ distributorAccountId: session.account._id }).select(
       "fullName mobileNumber emailAddress role loginEnabled financeAccess isActive lastLoginAt"
     );
 
@@ -24,9 +28,11 @@ export async function GET(req) {
 
 export async function POST(req) {
   try {
+    const session = await getDistributorSession(req);
+    if (!session) return unauthorizedDistributorResponse();
+    if (!canManageAccess(session)) return NextResponse.json({ success: false, message: "Only the distributor Owner can manage team access" }, { status: 403 });
+
     const {
-      companyId,
-      distributorAccountId,
       customerId,
       fullName,
       mobileNumber,
@@ -36,8 +42,8 @@ export async function POST(req) {
       financeAccess,
     } = await req.json();
 
-    if (!companyId || !distributorAccountId || !fullName || !mobileNumber) {
-      return NextResponse.json({ message: "companyId, distributorAccountId, fullName, and mobileNumber are required" }, { status: 400 });
+    if (!fullName || !mobileNumber) {
+      return NextResponse.json({ message: "fullName and mobileNumber are required" }, { status: 400 });
     }
 
     await dbConnect();
@@ -45,10 +51,10 @@ export async function POST(req) {
     const normalizedMobile = normalizeMobileNumber(mobileNumber);
     const normalizedEmail = normalizeEmailAddress(emailAddress);
     const user = await DistributorAppUser.findOneAndUpdate(
-      { distributorAccountId, mobileNumber: normalizedMobile },
+      { distributorAccountId: session.account._id, mobileNumber: normalizedMobile },
       {
-        companyId,
-        distributorAccountId,
+        companyId: session.companyId,
+        distributorAccountId: session.account._id,
         customerId: customerId || null,
         fullName,
         mobileNumber: normalizedMobile,

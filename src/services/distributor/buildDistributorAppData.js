@@ -212,6 +212,9 @@ export async function buildDistributorAppData({ companyId, account, customer, us
       unitPrice: formatCurrency(line.unitPrice),
       totalAmount: formatCurrency(line.totalAmount),
     })),
+    history: (workflowHistoryMap[`salesOrder:${order.documentNumberOrder}`] || [])
+      .sort((a, b) => b.sortTime - a.sortTime)
+      .map(({ sortTime, ...entry }) => entry),
   }));
 
   const invoices = invoiceDocs.map((invoice) => ({

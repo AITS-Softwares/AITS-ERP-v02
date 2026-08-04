@@ -34,9 +34,9 @@ export default function DistributorMappingAdminPage() {
   async function loadData(accountId = "") {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("distributor-admin-token");
       const query = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
-      const res = await fetch(`/api/admin/distributor-mapping${query}`, {
+      const res = await fetch(`/api/distributor/admin/mapping${query}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -72,8 +72,8 @@ export default function DistributorMappingAdminPage() {
     try {
       setSaving(true);
       setMessage("");
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-mapping", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/mapping", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -96,8 +96,8 @@ export default function DistributorMappingAdminPage() {
     try {
       setPreviewLoading(true);
       setMessage("");
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-mapping", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/mapping", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -124,8 +124,8 @@ export default function DistributorMappingAdminPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/distributor-accounts" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor accounts</Link>
-        <Link href="/admin/distributor-setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
+        <Link href="/distributor/admin/accounts" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor accounts</Link>
+        <Link href="/distributor/admin/setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
       </div>
 
       <Message text={message} />

@@ -133,8 +133,8 @@ export default function DistributorOperationsPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-workflows", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/operations", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -170,8 +170,8 @@ export default function DistributorOperationsPage() {
     try {
       setSavingKey(key);
       setMessage("");
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-workflows", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/operations", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

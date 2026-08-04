@@ -1,10 +1,5 @@
-import DistributorShell from "@/components/distributor/DistributorShell";
-import { DistributorDataProvider } from "@/components/distributor/DistributorDataProvider";
+import DistributorRouteBoundary from "@/components/distributor/DistributorRouteBoundary";
 
 export default function DistributorLayout({ children }) {
-  return (
-    <DistributorDataProvider>
-      <DistributorShell>{children}</DistributorShell>
-    </DistributorDataProvider>
-  );
+  return <DistributorRouteBoundary>{children}</DistributorRouteBoundary>;
 }

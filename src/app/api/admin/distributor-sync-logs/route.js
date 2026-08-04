@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import { getTokenFromHeader, verifyJWT } from "@/lib/auth";
+import { getDistributorAdminSession } from "@/lib/distributorAdminAuth";
 import DistributorSyncLog from "@/models/DistributorSyncLog";
 
 function unauthorized() {
@@ -17,12 +17,7 @@ function formatDate(value) {
 }
 
 async function getCompanyUser(req) {
-  const token = getTokenFromHeader(req);
-  if (!token) return null;
-
-  const user = verifyJWT(token);
-  if (!user?.companyId) return null;
-  return user;
+  return getDistributorAdminSession(req);
 }
 
 export async function GET(req) {

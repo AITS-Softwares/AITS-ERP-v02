@@ -18,7 +18,6 @@ export default function DistributorDashboardPage() {
   const {
     dashboardStats = [],
     notifications = [],
-    offers = [],
     orders = [],
   } = data;
 
@@ -27,7 +26,7 @@ export default function DistributorDashboardPage() {
       <PageIntro
         eyebrow="Overview"
         title="Distributor dashboard"
-        description="This home screen gives the distributor one place to see open orders, stock-sensitive items, outstanding balance, promotions, and quick actions."
+        description="This home screen gives the distributor one place to see open orders, stock-sensitive items, outstanding balance, and quick actions."
         actions={quickActions.map((action) => (
           <ActionLink key={action.href} href={action.href}>
             {action.label}
@@ -38,10 +37,10 @@ export default function DistributorDashboardPage() {
       {loading ? <EmptyStateNote /> : null}
       <StatGrid items={dashboardStats} />
 
-      {!orders.length && !notifications.length && !offers.length ? (
+      {!orders.length && !notifications.length ? (
         <Surface className="p-5 sm:p-6">
           <p className="text-sm text-slate-500">
-            No distributor dashboard data is connected yet. Link distributor accounts, orders, notifications, and offers to populate this view.
+            No distributor dashboard data is connected yet. Link distributor accounts, orders, and notifications to populate this view.
           </p>
         </Surface>
       ) : null}
@@ -83,20 +82,6 @@ export default function DistributorDashboardPage() {
             </div>
           </Surface>
 
-          <Surface className="p-5 sm:p-6">
-            <SectionHeading title="Live offers" caption="Current offers and schemes linked to distributor sales activity." />
-            <div className="space-y-4">
-              {offers.map((offer) => (
-                <div key={offer.title} className="rounded-2xl border border-slate-200 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="font-semibold text-slate-900">{offer.title}</p>
-                    <Badge tone="green">{offer.validity}</Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-500">{offer.description}</p>
-                </div>
-              ))}
-            </div>
-          </Surface>
         </div>
       </div>
     </div>

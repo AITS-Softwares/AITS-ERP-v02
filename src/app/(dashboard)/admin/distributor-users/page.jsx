@@ -32,8 +32,8 @@ export default function DistributorUsersAdminPage() {
   async function loadData() {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-users", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -61,8 +61,8 @@ export default function DistributorUsersAdminPage() {
       if (String(form.mobileNumber || "").replace(/\D/g, "").length !== 10) {
         throw new Error("Enter a valid 10-digit mobile number");
       }
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-users", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,8 +94,8 @@ export default function DistributorUsersAdminPage() {
     try {
       setSavingUserId(user.id);
       setMessage("");
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-users", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/users", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -130,9 +130,9 @@ export default function DistributorUsersAdminPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/distributor-accounts" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor accounts</Link>
-        <Link href="/admin/distributor-setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
-        <Link href="/admin/distributor-otp" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">OTP readiness</Link>
+        <Link href="/distributor/admin/accounts" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor accounts</Link>
+        <Link href="/distributor/admin/setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
+        <Link href="/distributor/admin/otp" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">OTP readiness</Link>
       </div>
 
       <Message text={message} />

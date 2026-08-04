@@ -1,12 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
+import DistributorListFilters from "@/components/distributor/DistributorListFilters";
 import { ActionLink, Badge, DataTable, PageIntro, SectionHeading, StatGrid, Surface } from "@/components/distributor/DistributorUI";
 import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 
 export default function DistributorOrdersPage() {
   const { data } = useDistributorAppData();
   const orders = data.orders || [];
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("");
+  const visibleOrders = useMemo(() => orders.filter((order) => {
+    const haystack = [order.documentNumberOrder, order.id, order.postingDate, order.expectedDeliveryDate, order.deliveryDate].join(" ").toLowerCase();
+    return (!query || haystack.includes(query.toLowerCase())) && (!status || order.status === status);
+  }), [orders, query, status]);
+  const statuses = [...new Set(orders.map((order) => order.status).filter(Boolean))];
   const orderStats = [
     { label: "Open Sales Orders", value: String(orders.length), change: "Distributor-linked orders" },
     { label: "Pending Approval", value: String(orders.filter((order) => order.status === "Pending Approval").length), change: "Commercial review" },
@@ -24,6 +33,8 @@ export default function DistributorOrdersPage() {
       />
 
       <StatGrid items={orderStats} />
+
+      <DistributorListFilters query={query} onQueryChange={setQuery} placeholder="Search Sales Order number or date" filterLabel="All order statuses" filterValue={status} onFilterChange={setStatus} filterOptions={statuses} />
 
       {!orders.length ? (
         <Surface className="p-5 sm:p-6">
@@ -44,7 +55,7 @@ export default function DistributorOrdersPage() {
             { key: "status", label: "Status" },
             { key: "grandTotal", label: "Grand Total" },
           ]}
-          rows={orders.map((order) => ({
+          rows={visibleOrders.map((order) => ({
             ...order,
             postingDate: order.postingDate || order.date || "-",
             deliveryDate: order.expectedDeliveryDate || order.deliveryDate || "-",

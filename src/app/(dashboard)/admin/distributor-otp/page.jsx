@@ -11,8 +11,8 @@ export default function DistributorOtpAdminPage() {
   useEffect(() => {
     async function loadConfig() {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch("/api/admin/distributor-otp/config", {
+        const token = localStorage.getItem("distributor-admin-token");
+        const res = await fetch("/api/distributor/admin/otp", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json().catch(() => ({}));
@@ -37,8 +37,8 @@ export default function DistributorOtpAdminPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/distributor-setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
-        <Link href="/admin/distributor-users" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor users</Link>
+        <Link href="/distributor/admin/setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
+        <Link href="/distributor/admin/users" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor users</Link>
       </div>
 
       {message ? <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{message}</div> : null}

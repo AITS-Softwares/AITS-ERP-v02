@@ -28,8 +28,8 @@ export default function DistributorSyncLogsPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const token = localStorage.getItem("token");
-        const res = await fetch("/api/admin/distributor-sync-logs", {
+        const token = localStorage.getItem("distributor-admin-token");
+        const res = await fetch("/api/distributor/admin/sync-logs", {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json().catch(() => ({}));

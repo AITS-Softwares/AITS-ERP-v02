@@ -37,9 +37,9 @@ export default function DistributorAccountsPage() {
   async function loadData(search = "") {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("distributor-admin-token");
       const query = search ? `?search=${encodeURIComponent(search)}` : "";
-      const res = await fetch(`/api/admin/distributor-accounts${query}`, {
+      const res = await fetch(`/api/distributor/admin/accounts${query}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -68,8 +68,8 @@ export default function DistributorAccountsPage() {
         throw new Error("Display name and distributor code are required");
       }
 
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-accounts", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/accounts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -113,9 +113,9 @@ export default function DistributorAccountsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/distributor-setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
-        <Link href="/admin/distributor-mapping" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor mapping</Link>
-        <Link href="/admin/distributor-users" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor users</Link>
+        <Link href="/distributor/admin/setup" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Connection setup</Link>
+        <Link href="/distributor/admin/mapping" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor mapping</Link>
+        <Link href="/distributor/admin/users" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor users</Link>
       </div>
 
       <Message tone={tone} text={message} />

@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import { getTokenFromHeader, verifyJWT } from "@/lib/auth";
+import { getDistributorAdminSession } from "@/lib/distributorAdminAuth";
 import DistributorOtpSettings from "@/models/DistributorOtpSettings";
 import ErpNextConnection from "@/models/ErpNextConnection";
 import { getOtpDeliveryConfig } from "@/lib/otpDelivery";
@@ -12,11 +12,7 @@ function unauthorized() {
 }
 
 async function getCompanyUser(req) {
-  const token = getTokenFromHeader(req);
-  if (!token) return null;
-  const user = verifyJWT(token);
-  if (!user?.companyId) return null;
-  return user;
+  return getDistributorAdminSession(req);
 }
 
 function clean(value = "") {

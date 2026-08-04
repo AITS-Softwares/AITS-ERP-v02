@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { getTokenFromHeader, verifyJWT } from "@/lib/auth";
+import { getDistributorAdminSession } from "@/lib/distributorAdminAuth";
 import { getOtpDeliveryConfig } from "@/lib/otpDelivery";
 
 function unauthorized() {
@@ -9,11 +9,8 @@ function unauthorized() {
 }
 
 export async function GET(req) {
-  const token = getTokenFromHeader(req);
-  if (!token) return unauthorized();
-
-  const user = verifyJWT(token);
-  if (!user?.companyId) return unauthorized();
+  const user = getDistributorAdminSession(req);
+  if (!user) return unauthorized();
 
   const config = await getOtpDeliveryConfig(user.companyId);
 

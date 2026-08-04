@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 import { Badge, PageIntro, SectionHeading, Surface } from "@/components/distributor/DistributorUI";
 
@@ -8,6 +9,7 @@ export default function DistributorNotificationsPage() {
   const router = useRouter();
   const { data, markNotificationRead, markAllNotificationsRead } = useDistributorAppData();
   const notifications = data.notifications || [];
+  const offers = data.offers || [];
   const unreadNotifications = notifications.filter((item) => !item.isRead);
 
   return (
@@ -17,6 +19,23 @@ export default function DistributorNotificationsPage() {
         title="Notification center"
         description="This screen will collect order alerts, dispatch updates, finance reminders, and offer announcements in one place."
       />
+
+      <Surface className="p-5 sm:p-6">
+        <SectionHeading title="Active schemes and offers" caption="Only ERPNext promotional schemes currently valid for this distributor are shown. Final eligibility is confirmed by ERPNext at order pricing." />
+        {offers.length ? (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {offers.map((offer) => (
+              <div key={offer.id || offer.title} className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700">{offer.schemeTag || "Offer"}</p>
+                <p className="mt-2 font-semibold text-slate-900">{offer.title}</p>
+                <p className="mt-2 text-sm text-slate-600">{offer.description || "Eligibility is calculated by ERPNext."}</p>
+                <p className="mt-3 text-xs font-semibold text-slate-500">{offer.validity || "Currently active"}</p>
+                <Link href="/distributor/products" className="mt-4 inline-flex text-sm font-semibold text-[#105B92]">View eligible products</Link>
+              </div>
+            ))}
+          </div>
+        ) : <p className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">No active ERPNext promotional schemes apply to this distributor today.</p>}
+      </Surface>
 
       <Surface className="p-5 sm:p-6">
         <SectionHeading

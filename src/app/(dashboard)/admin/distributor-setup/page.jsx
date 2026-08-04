@@ -54,8 +54,8 @@ export default function DistributorSetupPage() {
   async function loadSetup() {
     try {
       setLoading(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-setup", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/setup", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json().catch(() => ({}));
@@ -86,8 +86,8 @@ export default function DistributorSetupPage() {
     try {
       setSavingSection(section);
       setMessage("");
-      const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/distributor-setup", {
+      const token = localStorage.getItem("distributor-admin-token");
+      const res = await fetch("/api/distributor/admin/setup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +112,7 @@ export default function DistributorSetupPage() {
     try {
       setTestingErpNext(true);
       setMessage("");
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("distributor-admin-token");
       const body = erpForm.id
         ? { connectionId: erpForm.id }
         : {
@@ -150,10 +150,10 @@ export default function DistributorSetupPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Link href="/admin/distributor-accounts" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor accounts</Link>
-        <Link href="/admin/distributor-users" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor users</Link>
-        <Link href="/admin/distributor-otp" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">OTP readiness</Link>
-        <Link href="/admin/distributor-mapping" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor mapping</Link>
+        <Link href="/distributor/admin/accounts" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor accounts</Link>
+        <Link href="/distributor/admin/users" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor users</Link>
+        <Link href="/distributor/admin/otp" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">OTP readiness</Link>
+        <Link href="/distributor/admin/mapping" className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700">Distributor mapping</Link>
       </div>
 
       <Message tone={messageTone} text={message} />

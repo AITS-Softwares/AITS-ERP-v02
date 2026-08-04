@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { FinancePaymentDesk } from "@/components/distributor/DistributorInteractiveForms";
 import { Badge, DataTable, PageIntro, SectionHeading, StatGrid, Surface } from "@/components/distributor/DistributorUI";
 import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
-import { downloadDistributorFile } from "@/lib/distributorClientDownloads";
+import { downloadDistributorFile, printDistributorInvoice } from "@/lib/distributorClientDownloads";
 
 export default function DistributorFinancePage() {
   const { data } = useDistributorAppData();
   const financeSummary = data.financeSummary || [];
   const ledgerEntries = data.ledgerEntries || [];
   const paymentUpdates = data.paymentUpdates || [];
+  const invoices = data.invoices || [];
   const [exporting, setExporting] = useState(false);
   const [status, setStatus] = useState("");
 
@@ -18,8 +20,8 @@ export default function DistributorFinancePage() {
     <div className="space-y-6">
       <PageIntro
         eyebrow="Finance"
-        title="Outstanding, ledger, and payments"
-        description="Monitor outstanding balance, invoice follow-up, payment updates, and customer ledger movement linked to ERPNext finance records."
+        title="Finance and invoices"
+        description="Monitor invoices, outstanding balance, ledger movement, and payment follow-up from one combined mobile workspace."
         actions={(
           <button
             type="button"
@@ -44,6 +46,22 @@ export default function DistributorFinancePage() {
 
       <StatGrid items={financeSummary} />
       {status ? <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">{status}</div> : null}
+
+      <Surface className="p-5 sm:p-6">
+        <SectionHeading title="Sales invoices" caption="Open an invoice for document download and its payment-related follow-up." />
+        {!invoices.length ? <p className="mb-4 text-sm text-slate-500">No ERPNext Sales Invoice records are available for this distributor yet.</p> : null}
+        <DataTable
+          columns={[{ key: "id", label: "Sales Invoice" }, { key: "postingDate", label: "Posting Date" }, { key: "dueDate", label: "Due Date" }, { key: "outstanding", label: "Outstanding" }, { key: "status", label: "Payment Status" }, { key: "download", label: "PDF" }]}
+          rows={invoices.map((invoice) => ({
+            id: <Link href={`/distributor/invoices/${encodeURIComponent(invoice.invoiceNumber || invoice.id)}`} className="font-semibold text-[#105B92] hover:underline">{invoice.invoiceNumber || invoice.id}</Link>,
+            postingDate: invoice.postingDate || invoice.date || "-",
+            dueDate: invoice.dueDate || invoice.due || "-",
+            outstanding: invoice.outstandingAmount || invoice.outstanding || "-",
+            status: <Badge tone={(invoice.paymentStatus || invoice.status) === "Paid" ? "green" : (invoice.paymentStatus || invoice.status) === "Overdue" ? "red" : "amber"}>{invoice.paymentStatus || invoice.status || "Pending"}</Badge>,
+            download: <button type="button" onClick={() => printDistributorInvoice(`/api/distributor/invoices/${encodeURIComponent(invoice.invoiceNumber || invoice.id)}/print`).catch((error) => setStatus(error.message || "Failed to open invoice print"))} className="text-sm font-semibold text-[#105B92] hover:underline">Print / Save PDF</button>,
+          }))}
+        />
+      </Surface>
 
       <Surface className="p-5 sm:p-6">
         <SectionHeading

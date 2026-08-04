@@ -194,6 +194,10 @@ const MODULE_ROUTE_MAP = {
     { label: "Tasks",              path: "/admin/tasks",                       needsView: true },
     { label: "Tasks Board",        path: "/admin/tasks/board",                 needsView: true },
   ],
+  "Warehouse": [
+    { label: "Open WMS",           path: "/wms",                               needsView: true },
+    { label: "ERPNext Connection", path: "/wms/setup",                         needsView: true },
+  ],
 };
 
 function canAccessModule(data) {
@@ -373,6 +377,11 @@ export default function Layout({ children }) {
                 <Item href="/admin/distributor-offers" icon={<HiDocumentText />} label="Offers & Schemes" onClick={closeSidebar} isActive={isActive("/admin/distributor-offers")} />
                 <Item href="/admin/distributor-sync-logs" icon={<HiOutlineLibrary />} label="Sync Logs" onClick={closeSidebar} isActive={isActive("/admin/distributor-sync-logs")} />
                 <Item href="/admin/distributor-otp" icon={<HiOutlineCreditCard />} label="OTP Delivery" onClick={closeSidebar} isActive={isActive("/admin/distributor-otp")} />
+              </Section>
+
+              <Section title="Warehouse Management" icon={<GiStockpiles />} isOpen={openMenu === "warehouseManagement"} onToggle={() => toggleMenu("warehouseManagement")}>
+                <Item href="/wms" icon={<HiCube />} label="Open WMS" onClick={closeSidebar} isActive={pathname.startsWith("/wms")} />
+                <Item href="/wms/setup" icon={<HiCog />} label="ERPNext Connection" onClick={closeSidebar} isActive={isActive("/wms/setup")} />
               </Section>
 
               <Section title="Transactions View" icon={<HiOutlineCreditCard />} isOpen={openMenu === "transactionsView"} onToggle={() => toggleMenu("transactionsView")}>

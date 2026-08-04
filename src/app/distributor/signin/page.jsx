@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { DistributorOtpPreview } from "@/components/distributor/DistributorInteractiveForms";
 
 export default function DistributorSigninPage() {
@@ -28,6 +29,11 @@ export default function DistributorSigninPage() {
             <p className="mt-2 text-sm text-slate-500">Use your registered distributor login details to continue.</p>
           </div>
           <DistributorOtpPreview />
+          <div className="mt-6 border-t border-slate-100 pt-4 text-center text-sm text-slate-500">
+            Managing distributor access? <Link href="/distributor/admin/signin" className="font-semibold text-[#105B92]">Admin sign in</Link>
+            <span className="px-2 text-slate-300">|</span>
+            <Link href="/distributor/admin/register" className="font-semibold text-[#105B92]">Register Admin</Link>
+          </div>
         </section>
       </div>
     </main>

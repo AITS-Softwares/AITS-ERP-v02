@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import { getTokenFromHeader, verifyJWT } from "@/lib/auth";
+import { getDistributorAdminSession } from "@/lib/distributorAdminAuth";
 import DistributorAccount from "@/models/DistributorAccount";
 import { buildERPNextConfig, resolveERPNextConnection } from "@/services/integrations/erpnext/connectionService";
 import { ERPNextError, erpnextRequestWithConfig } from "@/services/integrations/erpnext/erpnextClient";
@@ -13,11 +13,7 @@ function unauthorized() {
 }
 
 async function getCompanyUser(req) {
-  const token = getTokenFromHeader(req);
-  if (!token) return null;
-  const user = verifyJWT(token);
-  if (!user?.companyId) return null;
-  return user;
+  return getDistributorAdminSession(req);
 }
 
 function cleanText(value = "") {

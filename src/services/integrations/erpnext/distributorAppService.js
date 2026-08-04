@@ -2,6 +2,7 @@ import { buildDistributorLocalExtensions } from "@/services/distributor/buildDis
 import { buildERPNextConfig, resolveERPNextConnection } from "@/services/integrations/erpnext/connectionService";
 import { resolveERPNextDistributorContext as resolveERPNextDistributorIdentityContext } from "@/services/integrations/erpnext/distributorIdentityService";
 import { ERPNextError, erpnextRequestWithConfig } from "@/services/integrations/erpnext/erpnextClient";
+import { getDistributorPromotionalOffers } from "@/services/integrations/erpnext/distributorPromotionService";
 
 function toNumber(value) {
   const amount = Number(String(value ?? "").replace(/[^\d.-]/g, ""));
@@ -73,6 +74,34 @@ async function readERPNextDocument(config, doctype, name) {
   );
 
   return payload?.data || null;
+}
+
+async function resolveERPNextCustomerAddress(config, customer) {
+  let addressName = normalizeText(customer?.customer_primary_address || customer?.primary_address);
+  if (!addressName && customer?.name) {
+    const links = await listERPNextDocuments(config, "Dynamic Link", {
+      fields: ["parent"],
+      filters: [
+        ["Dynamic Link", "parenttype", "=", "Address"],
+        ["Dynamic Link", "link_doctype", "=", "Customer"],
+        ["Dynamic Link", "link_name", "=", customer.name],
+      ],
+      limit: 1,
+    }).catch(() => []);
+    addressName = normalizeText(links[0]?.parent);
+  }
+  if (!addressName) return null;
+  const address = await readERPNextDocument(config, "Address", addressName).catch(() => null);
+  if (!address) return null;
+  const formatted = [address.address_line1, address.address_line2, address.city, address.state, address.pincode, address.country]
+    .map(normalizeText)
+    .filter(Boolean)
+    .join(", ");
+  return formatted ? {
+    label: normalizeText(address.address_title) || `${normalizeText(customer?.customer_name || customer?.name)} address`,
+    type: normalizeText(address.address_type) || "Billing / shipping",
+    address: formatted,
+  } : null;
 }
 
 async function createERPNextDocument(config, doctype, body) {
@@ -265,17 +294,17 @@ function buildNotificationsFromERP(orders, invoices, dispatches, offers = []) {
 }
 
 export function getERPNextErrorMessage(error) {
-  if (error?.details?._server_messages) {
-    try {
-      const parsed = JSON.parse(error.details._server_messages);
-      const message = parsed?.[0];
-      if (typeof message === "string") {
-        return message.replace(/<[^>]+>/g, "").trim();
-      }
-    } catch {
-      return error.message || "ERPNext request failed";
+  const readMessage = (value) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      try { return readMessage(JSON.parse(value)); } catch { return value.replace(/<[^>]+>/g, "").trim(); }
     }
-  }
+    if (Array.isArray(value)) return value.map(readMessage).find(Boolean) || "";
+    if (typeof value === "object") return readMessage(value.message || value.exc || value._server_messages || value.data);
+    return "";
+  };
+  const detailedMessage = readMessage(error?.details?._server_messages || error?.details?.message || error?.details);
+  if (detailedMessage && detailedMessage !== "ERPNext request failed") return detailedMessage;
 
   if (error?.code === "AUTH_FAILED") return "ERPNext authentication failed.";
   if (error?.code === "TIMEOUT") return "ERPNext did not respond in time.";
@@ -287,13 +316,66 @@ export async function resolveERPNextDistributorContext(session) {
   return resolveERPNextDistributorIdentityContext(session);
 }
 
+export async function resolveERPNextTransactionCompany(config, customer = {}) {
+  const configuredCompany = normalizeText(process.env.ERP_NEXT_DISTRIBUTOR_COMPANY) || normalizeText(customer.company);
+  if (configuredCompany) return configuredCompany;
+
+  const userDefault = await erpnextRequestWithConfig(config, "/api/method/frappe.defaults.get_user_default", {
+    method: "POST",
+    body: { doctype: "Company" },
+  }).then((response) => normalizeText(response?.message || response?.data)).catch(() => "");
+  if (userDefault) return userDefault;
+
+  const companies = await listERPNextDocuments(config, "Company", {
+    fields: ["name"],
+    filters: [["Company", "is_group", "=", 0]],
+    orderBy: "name asc",
+    limit: 2,
+  });
+  if (companies.length === 1) return normalizeText(companies[0].name);
+  if (companies.length > 1) throw new ERPNextError("ERPNext has multiple Companies. Set ERP_NEXT_DISTRIBUTOR_COMPANY to the Company used for distributor Sales Orders.", { status: 400, code: "COMPANY_REQUIRED" });
+  throw new ERPNextError("No active ERPNext Company is available for Sales Orders.", { status: 400, code: "COMPANY_REQUIRED" });
+}
+
+export async function resolveERPNextActiveWarehouse(config, warehouse) {
+  const name = normalizeText(warehouse);
+  if (!name) return "";
+  const records = await listERPNextDocuments(config, "Warehouse", {
+    fields: ["name"],
+    filters: [["Warehouse", "name", "=", name], ["Warehouse", "disabled", "=", 0]],
+    limit: 1,
+  }).catch(() => []);
+  return records[0]?.name ? name : "";
+}
+
+export async function resolveERPNextTransactionPricing(config, company, customer = {}) {
+  const configuredPriceList = normalizeText(process.env.ERP_NEXT_DISTRIBUTOR_PRICE_LIST);
+  const requestedPriceList = configuredPriceList || normalizeText(customer.default_price_list);
+  const [companyRecords, priceLists] = await Promise.all([
+    listERPNextDocuments(config, "Company", { fields: ["name", "default_currency"], filters: [["Company", "name", "=", company]], limit: 1 }),
+    listERPNextDocuments(config, "Price List", { fields: ["name", "currency"], filters: [["Price List", "selling", "=", 1], ["Price List", "enabled", "=", 1]], orderBy: "name asc", limit: 100 }),
+  ]);
+  const priceList = requestedPriceList
+    ? priceLists.find((record) => normalizeText(record.name) === requestedPriceList)
+    : (priceLists.find((record) => normalizeText(record.name) === "Standard Selling") || priceLists[0]);
+  if (!priceList?.name) throw new ERPNextError("No enabled selling Price List is available in ERPNext.", { status: 400, code: "PRICE_LIST_REQUIRED" });
+
+  const companyCurrency = normalizeText(companyRecords[0]?.default_currency);
+  const currency = normalizeText(priceList.currency) || normalizeText(customer.default_currency) || companyCurrency;
+  if (!currency || currency.toLowerCase() === "none") {
+    throw new ERPNextError(`Currency is not configured on ERPNext Price List ${priceList.name} or Company ${company}.`, { status: 400, code: "CURRENCY_REQUIRED" });
+  }
+  return { priceList: normalizeText(priceList.name), currency, companyCurrency };
+}
+
 export async function buildDistributorConnectedAppData(session, { baseData } = {}) {
   const localData = baseData || await buildDistributorLocalExtensions(session);
+  const { workflowHistoryMap = {}, ...localDataForClient } = localData;
   const liveContext = await resolveERPNextDistributorContext(session);
 
   if (!liveContext?.config || !liveContext.customer) {
     return {
-      ...localData,
+      ...localDataForClient,
       categories: [],
       products: [],
       stockItems: [],
@@ -312,17 +394,22 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
   }
 
   const { config, customer } = liveContext;
+  const erpAddress = await resolveERPNextCustomerAddress(config, customer).catch(() => null);
+  const promotionalOffers = await getDistributorPromotionalOffers({ companyId: session.companyId, context: liveContext }).catch(() => []);
+  const offers = [...promotionalOffers, ...(localData.offers || [])];
   const localInvoiceMap = new Map((localData.invoices || []).map((invoice) => [invoice.invoiceNumber || invoice.id, invoice]));
   const customerFilters = buildCustomerOrFilters("Sales Order", customer, session);
   const invoiceFilters = buildCustomerOrFilters("Sales Invoice", customer, session);
   const deliveryFilters = buildCustomerOrFilters("Delivery Note", customer, session);
   const paymentFilters = buildCustomerOrFilters("Payment Entry", customer, session);
 
+  // The full catalogue is served by /api/distributor/products. Keep this
+  // dashboard payload deliberately small for mobile/WebView performance.
   const itemDocs = await listERPNextDocuments(config, "Item", {
     fields: ["name", "item_code", "item_name", "item_group", "stock_uom", "description"],
     filters: [["Item", "disabled", "=", 0]],
     orderBy: "item_name asc",
-    limit: 60,
+    limit: 20,
   });
 
   const itemCodes = itemDocs.map((item) => normalizeText(item.item_code || item.name)).filter(Boolean);
@@ -336,7 +423,7 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
             ["Item Price", "item_code", "in", itemCodes],
           ],
           orderBy: "modified desc",
-          limit: 200,
+          limit: 1500,
         }).catch(() => [])
       : [],
     itemCodes.length
@@ -349,12 +436,12 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
               : []),
           ],
           orderBy: "modified desc",
-          limit: 200,
+          limit: 1500,
         }).catch(() => [])
       : [],
     customerFilters.length
       ? listERPNextDocuments(config, "Sales Order", {
-          fields: ["name", "customer", "customer_name", "transaction_date", "delivery_date", "status", "grand_total", "po_no", "modified"],
+          fields: ["name", "customer", "customer_name", "transaction_date", "delivery_date", "status", "workflow_state", "grand_total", "po_no", "modified"],
           filters: [["Sales Order", "docstatus", "!=", 2]],
           orFilters: customerFilters,
           orderBy: "modified desc",
@@ -438,7 +525,9 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
       postingDate: formatDate(postingValue),
       expectedDeliveryDate: formatDate(deliveryValue),
       deliveryDate: formatDate(deliveryValue),
-      status: normalizeText(order.status) || "Open",
+      status: normalizeText(order.workflow_state || detail?.workflow_state || order.status) || "Open",
+      erpStatus: normalizeText(order.status) || "Open",
+      workflowState: normalizeText(order.workflow_state || detail?.workflow_state),
       grandTotal: formatCurrency(order.grand_total),
       amount: formatCurrency(order.grand_total),
       shipTo: normalizeText(detail?.shipping_address_name || detail?.customer_address),
@@ -450,6 +539,10 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
         unitPrice: formatCurrency(line.rate),
         totalAmount: formatCurrency(line.amount),
       })),
+      history: (workflowHistoryMap[`salesOrder:${order.name}`] || [])
+        .slice()
+        .sort((a, b) => b.sortTime - a.sortTime)
+        .map(({ sortTime, ...entry }) => entry),
       sortTime: new Date(postingValue || Date.now()).getTime(),
     };
   });
@@ -565,7 +658,7 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
     .sort((a, b) => b.sortDate - a.sortDate)
     .map(({ sortDate, ...entry }) => entry);
 
-  const notifications = buildNotificationsFromERP(orders, invoices, dispatches, localData.offers || []);
+  const notifications = buildNotificationsFromERP(orders, invoices, dispatches, offers);
   const mergedNotifications = [...notifications, ...(localData.notifications || [])]
     .filter(Boolean)
     .reduce((acc, entry) => {
@@ -575,14 +668,18 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
     .slice(0, 12);
 
   return {
-    ...localData,
+    ...localDataForClient,
     profile: {
       ...localData.profile,
       name: normalizeText(customer.customer_name) || localData.profile?.name || "",
       code: normalizeText(customer.name) || localData.profile?.code || "",
       phone: normalizeText(customer.mobile_no) || localData.profile?.phone || "",
       route: normalizeText(customer.territory) || localData.profile?.route || "",
+      preferredWarehouse: normalizeText(session.account?.preferredWarehouse) || localData.profile?.preferredWarehouse || "",
     },
+    savedAddresses: erpAddress
+      ? [erpAddress, ...(localData.savedAddresses || []).filter((address) => normalizeText(address.address) !== erpAddress.address)]
+      : (localData.savedAddresses || []),
     categories,
     products,
     stockItems,
@@ -599,6 +696,7 @@ export async function buildDistributorConnectedAppData(session, { baseData } = {
       { label: "Credit Notes", value: String(creditNotes.length), change: formatCurrency(totalCreditNotes) },
     ],
     notifications: mergedNotifications,
+    offers,
     source: {
       mode: "erpnext",
       label: liveContext.connection.label,
@@ -619,29 +717,41 @@ export async function createERPNextDistributorSalesOrder(session, body) {
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const deliveryDate = normalizeText(body.deliveryDate) || today;
+  const deliveryDate = normalizeText(body.deliveryDate);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) {
+    throw new ERPNextError("Requested delivery date is required", { status: 400, code: "DELIVERY_DATE_REQUIRED" });
+  }
+  if (deliveryDate < today) {
+    throw new ERPNextError("Requested delivery date cannot be earlier than the order date", { status: 400, code: "DELIVERY_DATE_INVALID" });
+  }
+  const [company, preferredWarehouse] = await Promise.all([
+    resolveERPNextTransactionCompany(liveContext.config, liveContext.customer),
+    resolveERPNextActiveWarehouse(liveContext.config, session.account?.preferredWarehouse),
+  ]);
+  const pricing = await resolveERPNextTransactionPricing(liveContext.config, company, liveContext.customer);
   const remarks = [
     normalizeText(body.remarks),
     normalizeText(body.shipTo) ? `Ship to: ${normalizeText(body.shipTo)}` : "",
-    normalizeText(body.paymentMode) ? `Payment mode: ${normalizeText(body.paymentMode)}` : "",
-    normalizeText(body.paymentReference) ? `Payment ref: ${normalizeText(body.paymentReference)}` : "",
   ].filter(Boolean).join(" | ");
 
   const payload = {
     doctype: "Sales Order",
     customer: liveContext.customer.name,
+    company,
+    selling_price_list: pricing.priceList,
+    currency: pricing.currency,
+    ...(pricing.companyCurrency && pricing.companyCurrency === pricing.currency ? { conversion_rate: 1 } : {}),
     transaction_date: today,
     delivery_date: deliveryDate,
     po_no: normalizeText(body.poReference),
-    set_warehouse: normalizeText(session.account?.preferredWarehouse),
+    set_warehouse: preferredWarehouse,
     remarks,
     items: lines.map((line) => ({
       item_code: normalizeText(line.itemCode),
       qty: Math.max(1, toNumber(line.qty)),
-      rate: toNumber(line.rate),
       schedule_date: deliveryDate,
       uom: normalizeText(line.uom),
-      warehouse: normalizeText(session.account?.preferredWarehouse),
+      warehouse: preferredWarehouse,
     })),
   };
 

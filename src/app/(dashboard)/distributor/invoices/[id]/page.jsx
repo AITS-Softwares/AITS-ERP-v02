@@ -4,15 +4,18 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useDistributorAppData } from "@/components/distributor/DistributorDataProvider";
 import { Badge, KeyValueGrid, PageIntro, StatePanel, Surface } from "@/components/distributor/DistributorUI";
-import { downloadDistributorFile } from "@/lib/distributorClientDownloads";
+import { printDistributorInvoice } from "@/lib/distributorClientDownloads";
 
 export default function DistributorInvoiceDetailPage() {
   const params = useParams();
-  const { data } = useDistributorAppData();
+  const { data, loading } = useDistributorAppData();
   const [downloading, setDownloading] = useState(false);
   const [status, setStatus] = useState("");
   const invoice = (data.invoices || []).find((item) => String(item.invoiceNumber || item.id) === String(params.id));
 
+  if (loading) {
+    return <div className="space-y-6"><PageIntro eyebrow="Sales Invoice detail" title="Loading invoice" description="Retrieving the invoice record..." /></div>;
+  }
   if (!invoice) {
     return (
       <div className="space-y-6">
@@ -40,24 +43,24 @@ export default function DistributorInvoiceDetailPage() {
         </Surface>
         <Surface className="p-6">
           <div className="space-y-4">
-            <StatePanel tone={(invoice.paymentStatus || invoice.status) === "Overdue" ? "amber" : "blue"} title="Action zone" description="Download the invoice summary and review any attached document files linked to this invoice." />
+            <StatePanel tone={(invoice.paymentStatus || invoice.status) === "Overdue" ? "amber" : "blue"} title="Action zone" description="Open ERPNext's normal Print view, then use Chrome Save as PDF for the original invoice layout." />
             <button
               type="button"
               onClick={async () => {
                 try {
                   setDownloading(true);
                   setStatus("");
-                  await downloadDistributorFile(`/api/distributor/invoices/${invoice.invoiceNumber || invoice.id}/download`, `${invoice.invoiceNumber || invoice.id}.pdf`);
-                  setStatus("Invoice summary downloaded successfully.");
+                  await printDistributorInvoice(`/api/distributor/invoices/${encodeURIComponent(invoice.invoiceNumber || invoice.id)}/print`);
+                  setStatus("ERPNext Print view opened. Use Chrome Save as PDF.");
                 } catch (error) {
-                  setStatus(error.message || "Failed to download invoice summary");
+                  setStatus(error.message || "Failed to open ERPNext Print view");
                 } finally {
                   setDownloading(false);
                 }
               }}
               className="rounded-2xl bg-[#105B92] px-4 py-3 text-sm font-semibold text-white"
             >
-              {downloading ? "Downloading..." : "Download invoice PDF"}
+              {downloading ? "Opening print..." : "Print / Save as PDF"}
             </button>
             {(invoice.attachments || []).length ? (
               <div className="space-y-2">

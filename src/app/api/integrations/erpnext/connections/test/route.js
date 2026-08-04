@@ -2,7 +2,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import { getTokenFromHeader, verifyJWT } from "@/lib/auth";
+import { getDistributorAdminSession } from "@/lib/distributorAdminAuth";
 import ErpNextConnection from "@/models/ErpNextConnection";
 import { buildERPNextConfig, resolveERPNextConnection } from "@/services/integrations/erpnext/connectionService";
 import { ERPNextError, erpnextRequestWithConfig } from "@/services/integrations/erpnext/erpnextClient";
@@ -39,11 +39,8 @@ export async function POST(req) {
   let savedConnectionId = null;
 
   try {
-    const token = getTokenFromHeader(req);
-    if (!token) return unauthorized();
-
-    user = verifyJWT(token);
-    if (!user?.companyId) return unauthorized();
+    user = getDistributorAdminSession(req);
+    if (!user) return unauthorized();
 
     const body = await req.json().catch(() => ({}));
 

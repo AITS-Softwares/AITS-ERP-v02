@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   FiBell,
   FiChevronLeft,
+  FiLogOut,
   FiMenu,
   FiX,
 } from "react-icons/fi";
@@ -144,6 +145,17 @@ export default function DistributorShell({ children }) {
             </div>
           ))}
         </nav>
+        <button
+          type="button"
+          onClick={() => {
+            window.localStorage.removeItem("distributor_token");
+            router.replace("/distributor/signin");
+          }}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-3 py-3 text-sm font-semibold text-slate-600 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+        >
+          <FiLogOut size={17} />
+          Sign out
+        </button>
       </aside>
 
       <div className="lg:pl-[280px]">

@@ -186,6 +186,7 @@ export async function buildDistributorLocalExtensions({ companyId, account, user
   );
 
   return {
+    workflowHistoryMap,
     profile: {
       name: account.displayName || "",
       code: account.distributorCode || "",

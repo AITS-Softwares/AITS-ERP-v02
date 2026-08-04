@@ -8,7 +8,8 @@ export function signToken(user) {
       id:          user._id,
       name:        user?.name || user?.fullName || user?.companyName || "Unknown",
       email:       user.email,
-      role:        user.role?.name ?? "Company",
+      role:        user.role?.name ?? user.roles?.[0] ?? "Company",
+      roles:       Array.isArray(user.roles) ? user.roles : [],
       type:        user.type,
       permissions: user.permissions,
       companyId:   user.companyId ? user.companyId : user._id,
@@ -143,6 +144,5 @@ export function hasPermission(user, moduleName, action) {
 
 //   return modulePermissions.includes(action);
 // }
-
 
 

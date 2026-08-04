@@ -60,6 +60,26 @@ export default function DistributorOrderDetailPage() {
           </div>
         </Surface>
       </div>
+
+      <Surface className="p-6">
+        <p className="mb-4 text-sm font-semibold text-slate-900">Activity</p>
+        <div className="space-y-3">
+          {(order.history || []).length ? (
+            order.history.map((event) => (
+              <div key={event.id} className="rounded-2xl border border-slate-200 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="font-semibold text-slate-900">{event.title}</p>
+                  <span className="text-xs text-slate-400">{event.time}</span>
+                </div>
+                <p className="mt-1 text-sm text-slate-500">{event.actorLabel}</p>
+                {event.description ? <p className="mt-2 text-sm text-slate-600">{event.description}</p> : null}
+              </div>
+            ))
+          ) : (
+            <StatePanel tone="slate" title="No activity yet" description="Order activity will appear here as it is created, synced, and updated." />
+          )}
+        </div>
+      </Surface>
     </div>
   );
 }
