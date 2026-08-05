@@ -1,0 +1,32 @@
+
+> importexportsystem@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.10
+   - Environments: .env
+
+   Creating an optimized production build ...
+Failed to compile.
+
+./src/components/wms/WmsMasterTable.jsx
+Error:   [31mx[0m Expected '</', got '}'
+    ,-[[36;1;4mD:\CODEX PROJECTS\AITSERP_30072025-main\AITSERP_30072025-main\src\components\wms\WmsMasterTable.jsx[0m:36:1]
+ [2m33[0m |     <section className="rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between"><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={`Search ${title.toLowerCase()}`} className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-cyan-500 sm:max-w-sm" /><button onClick={load} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Refresh</button></div>
+ [2m34[0m |       {error ? <div className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><p>{error}</p>{error.includes("not configured") ? <Link href="/wms/setup" className="mt-2 inline-block font-semibold underline">Open WMS connection setup</Link> : <button onClick={retry} className="mt-2 font-semibold underline">Try again</button>}</div> : null}
+ [2m35[0m |       {!error && loading ? <div className="p-10 text-center text-sm text-slate-500">Loading live ERPNext data...</div> : null}
+ [2m36[0m |       {!error && !loading ? <><div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-100"><thead className="bg-slate-50"><tr>{columns.map((column) => <th key={column.label} className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">{column.label}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">{records.map((record) => <tr key={record.name} className="hover:bg-slate-50">{columns.map((column) => <td key={column.label} className="whitespace-nowrap px-4 py-3.5 text-sm text-slate-700">{column.render ? column.render(record) : (record[column.key] ?? "-")}</td>)}</tr>)}</tbody></table></div>{!records.length ? <div className="p-10 text-center text-sm text-slate-500">No records found in ERPNext.</div> : null}<div className="flex items-center justify-between border-t border-slate-100 p-4 text-sm"><span className="text-slate-500">Page {page}</span><div className="flex gap-2"><button disabled={page === 1} onClick={() => setPage((value) => value - 1)} className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40">Previous</button><button disabled={!hasMore} onClick={() => setPage((value) => value + 1)} className="rounded-lg border border-slate-300 px-3 py-1.5 disabled:opacity-40">Next</button></div></div></>}
+    : [35;1m                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ^[0m
+ [2m37[0m |     </section>
+ [2m38[0m |   </div>;
+ [2m39[0m | }
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./src/components/wms/WmsMasterTable.jsx
+./src/app/(dashboard)/wms/items/page.jsx
+
+
+> Build failed because of webpack errors
